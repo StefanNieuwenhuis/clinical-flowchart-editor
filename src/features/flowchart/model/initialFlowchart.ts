@@ -1,0 +1,70 @@
+import type { FlowchartDocument } from "./types";
+
+export const initialFlowchart: FlowchartDocument = {
+    title: "Beslisboom stomazorg",
+    version: "0.1.0",
+    status: "Concept",
+    selectedNodeId: "q_color",
+    viewport: {
+        x: 0,
+        y: 0,
+        scale: 1,
+    },
+    nodes: [
+        {
+            id: "start",
+            type: "start",
+            title: "Start stoma-observatie",
+            body: "Begin met alarmsignalen voordat routinematig wordt gezocht naar oorzaken.",
+            x: 80,
+            y: 90,
+        },
+        {
+            id: "q_color",
+            type: "question",
+            title: "Is de stoma zwart, donkerpaars, erg bleek of koud?",
+            body: "Alarmsignaal: mogelijke ischemie of verminderde doorbloeding.",
+            x: 460,
+            y: 70,
+        },
+        {
+            id: "emergency",
+            type: "emergency",
+            title: "Zoek met spoed medische hulp",
+            body: "Contacteer de arts of spoeddienst volgens lokaal protocol.",
+            x: 865,
+            y: 35,
+        },
+        {
+            id: "q_leakage",
+            type: "question",
+            title: "Is er herhaald lekkage of laat het stomamateriaal los?",
+            body: "Controleer pasvorm, huidplooien, consistentie van de output en stomagrootte.",
+            x: 865,
+            y: 220,
+        },
+        {
+            id: "nurse",
+            type: "consult_nurse",
+            title: "Raadpleeg stomaverpleegkundige",
+            body: "Vraag beoordeling van pasvorm, huidconditie en productkeuze.",
+            x: 1265,
+            y: 35,
+        },
+        {
+            id: "routine",
+            type: "end",
+            title: "Ga door met routinezorg",
+            body: "Documenteer de beoordeling en beoordeel opnieuw als klachten veranderen.",
+            x: 1265,
+            y: 335,
+        },
+    ],
+    edges: [
+        { id: "e1", from: "start", to: "q_color", label: "" },
+        { id: "e2", from: "q_color", to: "emergency", label: "Ja" },
+        { id: "e3", from: "q_color", to: "q_leakage", label: "Nee" },
+        { id: "e4", from: "q_leakage", to: "nurse", label: "Ja" },
+        { id: "e5", from: "q_leakage", to: "routine", label: "Nee" },
+    ],
+};
