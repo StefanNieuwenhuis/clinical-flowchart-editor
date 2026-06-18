@@ -203,7 +203,7 @@ describe('FlowchartStore', () => {
         expect(useFlowchartStore.getState().document.edges).toHaveLength(previousEdgeCount);
     });
 
-    it('should reject additional connections for sources with Ja/Nee/Start labels', () => {
+    it('should allow additional non-duplicate connections from existing sources', () => {
         const stateBefore = useFlowchartStore.getState().document;
         const sourceId = stateBefore.nodes.find((node) => node.id === 'q_color')?.id;
         const targetId = stateBefore.nodes.find((node) => node.id === 'routine')?.id;
@@ -215,7 +215,15 @@ describe('FlowchartStore', () => {
 
         useFlowchartStore.getState().connectNodes(sourceId!, targetId!);
 
-        expect(useFlowchartStore.getState().document.edges).toHaveLength(previousEdgeCount);
+        const edges = useFlowchartStore.getState().document.edges;
+        const addedEdge = edges.at(-1);
+
+        expect(edges).toHaveLength(previousEdgeCount + EDGE_COUNT_INCREMENT);
+        expect(addedEdge).toMatchObject({
+            from: sourceId,
+            to: targetId,
+            label: EMPTY_EDGE_LABEL,
+        });
     });
 
     it('should initialize with a semantic version', () => {

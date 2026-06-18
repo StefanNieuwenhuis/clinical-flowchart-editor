@@ -7,7 +7,7 @@ const FIRST_ITEM_INDEX = 0;
 const DUPLICATE_CONNECTION_EDGE_ID = 'e-duplicate-connection';
 const END_SOURCE_EDGE_ID = 'e-end-source';
 const START_TARGET_EDGE_ID = 'e-start-target';
-const RESTRICTED_SOURCE_EXTRA_EDGE_ID = 'e-restricted-source-extra';
+const ALLOWED_ADDITIONAL_CONNECTION_EDGE_ID = 'e-allowed-additional-connection';
 const EMPTY_LABEL = '';
 
 function cloneDocument(document: FlowchartDocument): FlowchartDocument {
@@ -173,13 +173,13 @@ describe('validateFlowchartDocument', () => {
         );
     });
 
-    it('flags additional connections from sources with Ja/Nee/Start labels', () => {
+    it('allows additional non-duplicate connections from a source', () => {
         const document = cloneDocument(initialFlowchart);
 
         document.edges = [
             ...document.edges,
             {
-                id: RESTRICTED_SOURCE_EXTRA_EDGE_ID,
+                id: ALLOWED_ADDITIONAL_CONNECTION_EDGE_ID,
                 from: 'q_color',
                 to: 'routine',
                 label: EMPTY_LABEL,
@@ -188,14 +188,6 @@ describe('validateFlowchartDocument', () => {
 
         const issues = validateFlowchartDocument(document);
 
-        expect(issues).toEqual(
-            expect.arrayContaining([
-                expect.objectContaining({
-                    severity: 'error',
-                    code: 'restricted-source-additional-connection',
-                    nodeId: 'q_color',
-                }),
-            ]),
-        );
+        expect(issues).toEqual([]);
     });
 });

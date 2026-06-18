@@ -1,10 +1,8 @@
 import {create, type StoreApi, type UseBoundStore} from "zustand";
 import { initialFlowchart } from "../model/initialFlowchart";
-import type {FlowchartDocument, FlowEdge, FlowNode, NodeType, Noop, RouteLabel, ViewportState} from "../model/types";
+import type {FlowchartDocument, FlowEdge, FlowNode, NodeType, Noop, ViewportState} from "../model/types";
 import {createId} from "../../../shared/utils/ids.ts";
 import {createNode} from "../utils/createNode.ts";
-
-const LOCKING_ROUTE_LABELS = new Set<RouteLabel>(["Ja", "Nee", "Start"]);
 
 export interface FlowchartState {
     document: FlowchartDocument;
@@ -96,14 +94,6 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
             );
 
             if (hasDuplicateConnection) {
-                return state;
-            }
-
-            const hasLockingOutgoingLabel = state.document.edges.some(
-                (edge) => edge.from === fromNodeId && LOCKING_ROUTE_LABELS.has(edge.label),
-            );
-
-            if (hasLockingOutgoingLabel) {
                 return state;
             }
 

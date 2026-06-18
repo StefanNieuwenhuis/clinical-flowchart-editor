@@ -1,6 +1,6 @@
 import {type ReactNode, type RefObject, useEffect, useRef, useState} from "react";
 import {type FlowchartState, useFlowchartStore} from "../../state/flowchartStore.ts";
-import type {FlowEdge, FlowNode, NodeType, Noop, RouteLabel, ViewportState} from "../../model/types.ts";
+import type {FlowEdge, FlowNode, NodeType, Noop, ViewportState} from "../../model/types.ts";
 import {EdgeLayer} from "./EdgeLayer.tsx";
 import {CanvasNode} from "./CanvasNode.tsx";
 import {useCanvasPanZoom} from "../../hooks/useCanvasPanZoom.ts";
@@ -14,7 +14,6 @@ const MIN_SCALE = 0.2;
 const MAX_SCALE = 2.0;
 const PREVIEW_PADDING = 80;
 const PREVIEW_DASH = '6 6';
-const LOCKING_ROUTE_LABELS = new Set<RouteLabel>(['Ja', 'Nee', 'Start']);
 
 type Point = { x: number; y: number };
 
@@ -101,14 +100,6 @@ export function CanvasArea(): ReactNode {
 
         if (hasDuplicateConnection) {
             return 'Deze verbinding bestaat al.';
-        }
-
-        const hasLockingOutgoingLabel = edges.some(
-            (edge) => edge.from === fromNode.id && LOCKING_ROUTE_LABELS.has(edge.label),
-        );
-
-        if (hasLockingOutgoingLabel) {
-            return 'Deze knoop heeft al Ja/Nee/Start-routes en kan geen extra route krijgen.';
         }
 
         return null;

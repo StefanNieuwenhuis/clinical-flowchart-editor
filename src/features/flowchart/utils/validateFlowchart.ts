@@ -1,6 +1,4 @@
-import type { FlowchartDocument, RouteLabel } from '../model/types';
-
-const LOCKING_ROUTE_LABELS = new Set<RouteLabel>(['Ja', 'Nee', 'Start']);
+import type { FlowchartDocument } from '../model/types';
 
 export type ValidationIssue = {
     severity: 'error' | 'warning';
@@ -42,7 +40,6 @@ export function validateFlowchartDocument(
 
     const edgeIds = new Set<string>();
     const edgeConnections = new Set<string>();
-    const sourceStats = new Map<string, { hasLockingLabel: boolean; hasNonLockingLabel: boolean }>();
 
     for (const edge of document.edges) {
         if (edgeIds.has(edge.id)) {
@@ -104,29 +101,6 @@ export function validateFlowchartDocument(
 
         edgeConnections.add(edgeConnectionKey);
 
-        const sourceInfo = sourceStats.get(edge.from) ?? {
-            hasLockingLabel: false,
-            hasNonLockingLabel: false,
-        };
-
-        if (LOCKING_ROUTE_LABELS.has(edge.label)) {
-            sourceInfo.hasLockingLabel = true;
-        } else {
-            sourceInfo.hasNonLockingLabel = true;
-        }
-
-        sourceStats.set(edge.from, sourceInfo);
-    }
-
-    for (const [sourceNodeId, sourceInfo] of sourceStats.entries()) {
-        if (sourceInfo.hasLockingLabel && sourceInfo.hasNonLockingLabel) {
-            issues.push({
-                severity: 'error',
-                code: 'restricted-source-additional-connection',
-                message: `Node ${sourceNodeId} has additional connections after Ja/Nee/Start labels`,
-                nodeId: sourceNodeId,
-            });
-        }
     }
 
     return issues;
