@@ -163,6 +163,30 @@ describe('CanvasArea', () => {
         expect(container.querySelector('[data-preview-edge]')).toBeNull();
     });
 
+    it('allows connecting to a target node that already has other connections', async () => {
+        const user = userEvent.setup();
+        const connectNodesSpy = vi.fn();
+
+        useFlowchartStore.setState({ connectNodes: connectNodesSpy });
+
+        const { container } = render(<CanvasArea />);
+
+        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
+
+        // emergency -> q_leakage should be valid even though q_leakage already has other edges
+        await user.click(portButtons[2]);
+
+        const canvasNodeButtons = container.querySelectorAll('[data-canvas-node]');
+        await user.click(canvasNodeButtons[3] as HTMLElement);
+
+        expect(connectNodesSpy).toHaveBeenCalledTimes(1);
+        expect(connectNodesSpy).toHaveBeenCalledWith(
+            initialFlowchart.nodes[2].id,
+            initialFlowchart.nodes[3].id,
+        );
+        expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
+    });
+
     it('keeps connect mode active and shows feedback when target is invalid', async () => {
         const user = userEvent.setup();
         const connectNodesSpy = vi.fn();
