@@ -47,11 +47,15 @@ function findNodeAtPoint(nodes: FlowNode[], point: { x: number; y: number }): Fl
 export function CanvasArea(): ReactNode {
     const canvasRef: RefObject<HTMLDivElement | null> = useRef<HTMLDivElement | null>(null);
     const [connectionDraft, setConnectionDraft] = useState<ConnectionDraft | null>(null);
+    const connectionDraftRef = useRef<ConnectionDraft | null>(null);
     
     const nodes: FlowNode[] = useFlowchartStore((state: FlowchartState): FlowNode[] => state.document.nodes);
     const edges: FlowEdge[] = useFlowchartStore((state: FlowchartState): FlowEdge[] => state.document.edges);
     const selectedNodeId: string | null = useFlowchartStore((state: FlowchartState): string | null => state.document.selectedNodeId);
     const viewport: ViewportState = useFlowchartStore((state: FlowchartState): ViewportState => state.document.viewport);
+
+    const nodesRef = useRef(nodes);
+    const viewportRef = useRef(viewport);
 
     const addNodeOfTypeAt = useFlowchartStore((state: FlowchartState) => state.addNodeOfTypeAt);
     const setAddNodeAtViewportCenter = useCanvasCommandStore(
@@ -66,6 +70,14 @@ export function CanvasArea(): ReactNode {
     const resetViewport: Noop = useFlowchartStore((state: FlowchartState): Noop => state.resetViewport);
     const fitViewportToBounds = useFlowchartStore((state: FlowchartState) => state.fitViewportToBounds);
 
+    useEffect(() => {
+        nodesRef.current = nodes;
+    }, [nodes]);
+
+    useEffect(() => {
+        viewportRef.current = viewport;
+    }, [viewport]);
+
     function handleConnectStart(
         sourceNodeId: string,
         input: { pointerId: number; point: { x: number; y: number } },
@@ -78,11 +90,14 @@ export function CanvasArea(): ReactNode {
 
         const point = getWorldPoint(canvas, viewport, input.point);
 
-        setConnectionDraft({
+        const draft = {
             sourceNodeId,
             pointerId: input.pointerId,
             point,
-        });
+        };
+
+        connectionDraftRef.current = draft;
+        setConnectionDraft(draft);
     }
 
     const panZoomHandlers = useCanvasPanZoom({
@@ -139,68 +154,73 @@ export function CanvasArea(): ReactNode {
     }
 
     useEffect(() => {
-        if (!connectionDraft) {
-            return;
-        }
-
-        const canvas = canvasRef.current;
-
-        if (!canvas) {
-            setConnectionDraft(null);
-            return;
-        }
-
         function updateDraftFromEvent(event: PointerEvent) {
-            if (event.pointerId !== connectionDraft.pointerId) {
+            const currentDraft = connectionDraftRef.current;
+
+            if (!currentDraft || event.pointerId !== currentDraft.pointerId) {
                 return;
             }
 
-            setConnectionDraft((currentDraft) => {
-                if (!currentDraft || currentDraft.pointerId !== event.pointerId) {
-                    return currentDraft;
-                }
+            const canvas = canvasRef.current;
 
-                return {
-                    ...currentDraft,
-                    point: getWorldPoint(canvas, viewport, {
-                        x: event.clientX,
-                        y: event.clientY,
-                    }),
-                };
-            });
-        }
-
-        function finishDraft(event: PointerEvent) {
-            if (event.pointerId !== connectionDraft.pointerId) {
+            if (!canvas) {
                 return;
             }
 
-            const sourceNode = nodes.find((node) => node.id === connectionDraft.sourceNodeId);
-            const targetPoint = getWorldPoint(canvas, viewport, {
+            const nextPoint = getWorldPoint(canvas, viewportRef.current, {
                 x: event.clientX,
                 y: event.clientY,
             });
-            const targetNode = findNodeAtPoint(nodes, targetPoint);
+
+            connectionDraftRef.current = {
+                ...currentDraft,
+                point: nextPoint,
+            };
+
+            setConnectionDraft(connectionDraftRef.current);
+        }
+
+        function finishDraft(event: PointerEvent) {
+            const currentDraft = connectionDraftRef.current;
+
+            if (!currentDraft || event.pointerId !== currentDraft.pointerId) {
+                return;
+            }
+
+            const canvas = canvasRef.current;
+
+            if (!canvas) {
+                connectionDraftRef.current = null;
+                setConnectionDraft(null);
+                return;
+            }
+
+            const sourceNode = nodesRef.current.find((node) => node.id === currentDraft.sourceNodeId);
+            const targetPoint = getWorldPoint(canvas, viewportRef.current, {
+                x: event.clientX,
+                y: event.clientY,
+            });
+            const targetNode = findNodeAtPoint(nodesRef.current, targetPoint);
 
             if (sourceNode && targetNode && canConnectNodes(sourceNode.type, targetNode.type)) {
                 addEdge(sourceNode.id, targetNode.id);
             }
 
+            connectionDraftRef.current = null;
             setConnectionDraft(null);
+            document.body.style.userSelect = "";
         }
 
         window.addEventListener("pointermove", updateDraftFromEvent);
         window.addEventListener("pointerup", finishDraft);
         window.addEventListener("pointercancel", finishDraft);
-        document.body.style.userSelect = "none";
 
         return () => {
             window.removeEventListener("pointermove", updateDraftFromEvent);
             window.removeEventListener("pointerup", finishDraft);
             window.removeEventListener("pointercancel", finishDraft);
-            document.body.style.userSelect = "";
         };
-    }, [addEdge, connectionDraft, nodes, viewport]);
+    }, [addEdge]);
 
     return (
         <div

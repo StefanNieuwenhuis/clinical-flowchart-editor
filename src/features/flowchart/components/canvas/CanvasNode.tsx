@@ -26,6 +26,9 @@ export function CanvasNode({node, scale, selected, onSelect, onMove, onConnectSt
     function handleConnectPointerDown(event: PointerEvent<HTMLSpanElement>) {
         event.stopPropagation();
 
+        event.currentTarget.setPointerCapture(event.pointerId);
+        document.body.style.userSelect = "none";
+
         onConnectStart(node.id, {
             pointerId: event.pointerId,
             point: {
@@ -33,6 +36,14 @@ export function CanvasNode({node, scale, selected, onSelect, onMove, onConnectSt
                 y: event.clientY,
             },
         });
+    }
+
+    function handleConnectPointerUp(event: PointerEvent<HTMLSpanElement>) {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+        }
+
+        document.body.style.userSelect = "";
     }
 
     const showConnectHandle = canStartConnection(node.type);
@@ -76,6 +87,8 @@ export function CanvasNode({node, scale, selected, onSelect, onMove, onConnectSt
                     title="Verbind naar een volgende stap"
                     className="absolute right-3 top-1/2 size-3 -translate-y-1/2 rounded-full border border-blue-300 bg-blue-50 opacity-80 shadow-sm transition hover:scale-110 hover:opacity-100"
                     onPointerDown={handleConnectPointerDown}
+                    onPointerUp={handleConnectPointerUp}
+                    onPointerCancel={handleConnectPointerUp}
                 />
             ) : null}
 
