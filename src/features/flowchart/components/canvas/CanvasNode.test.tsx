@@ -50,7 +50,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={onSelect}
                 onMove={onMove}
-                onConnectEnd={vi.fn()}
+                onConnectStart={vi.fn()}
             />,
         );
 
@@ -83,7 +83,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
-                onConnectEnd={vi.fn()}
+                onConnectStart={vi.fn()}
             />,
         );
 
@@ -107,7 +107,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
-                onConnectEnd={vi.fn()}
+                onConnectStart={vi.fn()}
             />,
         );
 
@@ -134,7 +134,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
-                onConnectEnd={vi.fn()}
+                onConnectStart={vi.fn()}
             />,
         );
 
@@ -156,7 +156,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
-                onConnectEnd={vi.fn()}
+                onConnectStart={vi.fn()}
             />,
         );
 
@@ -172,7 +172,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
-                onConnectEnd={vi.fn()}
+                onConnectStart={vi.fn()}
             />,
         );
 
@@ -195,7 +195,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
-                onConnectEnd={vi.fn()}
+                onConnectStart={vi.fn()}
             />,
         );
 
@@ -211,7 +211,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
-                onConnectEnd={vi.fn()}
+                onConnectStart={vi.fn()}
             />,
         );
 

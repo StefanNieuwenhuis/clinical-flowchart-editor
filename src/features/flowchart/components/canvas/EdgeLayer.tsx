@@ -1,16 +1,27 @@
 import type { FlowEdge, FlowNode } from "../../model/types";
 import {getGraphBounds} from "../../utils/graphBounds.ts";
 import {getEdgeLabelPosition, getEdgePath} from "../../utils/edgeGeometry.ts";
+import {NODE_HEIGHT, NODE_WIDTH} from "../../utils/graphBounds.ts";
+import type {ReactNode} from "react";
 
+interface ConnectionDraft {
+    sourceNodeId: string;
+    pointerId: number;
+    point: { x: number; y: number };
+}
 
 interface EdgeLayerProps {
     nodes: FlowNode[];
     edges: FlowEdge[];
+    previewConnection?: ConnectionDraft | null;
 }
 
-export function EdgeLayer({ nodes, edges }: EdgeLayerProps) {
+export function EdgeLayer({ nodes, edges, previewConnection }: EdgeLayerProps): ReactNode {
     const bounds = getGraphBounds(nodes);
     const nodeById = new Map(nodes.map((node) => [node.id, node]));
+    const previewSourceNode = previewConnection
+        ? nodeById.get(previewConnection.sourceNodeId) ?? null
+        : null;
 
     return (
         <svg
@@ -73,6 +84,18 @@ export function EdgeLayer({ nodes, edges }: EdgeLayerProps) {
                     </g>
                 );
             })}
+
+            {previewSourceNode && previewConnection ? (
+                <line
+                    x1={previewSourceNode.x + NODE_WIDTH - bounds.left}
+                    y1={previewSourceNode.y + NODE_HEIGHT / 2 - bounds.top}
+                    x2={previewConnection.point.x - bounds.left}
+                    y2={previewConnection.point.y - bounds.top}
+                    className="stroke-blue-400"
+                    strokeDasharray="6 4"
+                    strokeWidth="2"
+                />
+            ) : null}
         </svg>
     );
 }

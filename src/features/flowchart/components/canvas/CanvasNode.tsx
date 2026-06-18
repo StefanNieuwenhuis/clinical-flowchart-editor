@@ -1,10 +1,8 @@
 import type {FlowNode} from "../../model/types.ts";
-import {useRef, type PointerEvent, type ReactNode} from "react";
+import type {PointerEvent, ReactNode} from "react";
 import {nodeTypes} from "../../model/nodeTypes.ts";
 import {useNodeDrag} from "../../hooks/useNodeDrag.ts";
-import {canStartConnection} from "../../utils/connectionPolicy.ts";
-
-const CONNECTION_DRAG_THRESHOLD_PX = 4;
+import {canAcceptConnection, canStartConnection} from "../../utils/connectionPolicy.ts";
 
 interface CanvasNodeProps {
     node: FlowNode;
@@ -12,17 +10,10 @@ interface CanvasNodeProps {
     scale: number;
     onSelect: (nodeId: string) => void;
     onMove: (nodeId: string, position: {x: number, y: number}) => void;
-    onConnectEnd: (nodeId: string, point: { x: number; y: number }) => void;
+    onConnectStart: (nodeId: string, input: { pointerId: number; point: { x: number; y: number } }) => void;
 }
 
-export function CanvasNode({node, scale, selected, onSelect, onMove, onConnectEnd}: CanvasNodeProps): ReactNode {
-    const connectionStateRef = useRef<{
-        pointerId: number;
-        startX: number;
-        startY: number;
-        hasDragged: boolean;
-    } | null>(null);
-
+export function CanvasNode({node, scale, selected, onSelect, onMove, onConnectStart}: CanvasNodeProps): ReactNode {
     const dragHandlers = useNodeDrag({
         nodeId: node.id,
         x: node.x,
@@ -35,56 +26,17 @@ export function CanvasNode({node, scale, selected, onSelect, onMove, onConnectEn
     function handleConnectPointerDown(event: PointerEvent<HTMLSpanElement>) {
         event.stopPropagation();
 
-        connectionStateRef.current = {
+        onConnectStart(node.id, {
             pointerId: event.pointerId,
-            startX: event.clientX,
-            startY: event.clientY,
-            hasDragged: false,
-        };
-
-        event.currentTarget.setPointerCapture(event.pointerId);
-        document.body.style.userSelect = "none";
-    }
-
-    function handleConnectPointerMove(event: PointerEvent<HTMLSpanElement>) {
-        const connectionState = connectionStateRef.current;
-
-        if (!connectionState || event.pointerId !== connectionState.pointerId) {
-            return;
-        }
-
-        const deltaX = Math.abs(event.clientX - connectionState.startX);
-        const deltaY = Math.abs(event.clientY - connectionState.startY);
-
-        if (deltaX > CONNECTION_DRAG_THRESHOLD_PX || deltaY > CONNECTION_DRAG_THRESHOLD_PX) {
-            connectionState.hasDragged = true;
-        }
-    }
-
-    function handleConnectPointerUp(event: PointerEvent<HTMLSpanElement>) {
-        const connectionState = connectionStateRef.current;
-
-        if (!connectionState || event.pointerId !== connectionState.pointerId) {
-            return;
-        }
-
-        connectionStateRef.current = null;
-
-        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-        }
-
-        document.body.style.userSelect = "";
-
-        if (connectionState.hasDragged) {
-            onConnectEnd(node.id, {
+            point: {
                 x: event.clientX,
                 y: event.clientY,
-            });
-        }
+            },
+        });
     }
 
     const showConnectHandle = canStartConnection(node.type);
+    const showIncomingPort = canAcceptConnection(node.type);
 
     return (
         <button
@@ -124,9 +76,13 @@ export function CanvasNode({node, scale, selected, onSelect, onMove, onConnectEn
                     title="Verbind naar een volgende stap"
                     className="absolute right-3 top-1/2 size-3 -translate-y-1/2 rounded-full border border-blue-300 bg-blue-50 opacity-80 shadow-sm transition hover:scale-110 hover:opacity-100"
                     onPointerDown={handleConnectPointerDown}
-                    onPointerMove={handleConnectPointerMove}
-                    onPointerUp={handleConnectPointerUp}
-                    onPointerCancel={handleConnectPointerUp}
+                />
+            ) : null}
+
+            {showIncomingPort ? (
+                <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-3 top-1/2 size-3 -translate-y-1/2 rounded-full border border-slate-300 bg-white shadow-sm"
                 />
             ) : null}
 
@@ -136,5 +92,5 @@ export function CanvasNode({node, scale, selected, onSelect, onMove, onConnectEn
                 </p>
             ) : null}
         </button>
-    )
+    );
 }

@@ -6,6 +6,8 @@ export type Point = {
     y: number;
 };
 
+const NODE_PORT_CENTER_OFFSET = 18;
+
 
 export function getNodeCenter(node: FlowNode): Point {
     return {
@@ -16,12 +18,12 @@ export function getNodeCenter(node: FlowNode): Point {
 
 export function getEdgePath(from: FlowNode, to: FlowNode, bounds: GraphBounds) {
     const start = {
-        x: from.x + NODE_WIDTH - bounds.left,
+        x: from.x + NODE_WIDTH - NODE_PORT_CENTER_OFFSET - bounds.left,
         y: from.y + NODE_HEIGHT / 2 - bounds.top,
     };
 
     const end = {
-        x: to.x - bounds.left,
+        x: to.x + NODE_PORT_CENTER_OFFSET - bounds.left,
         y: to.y + NODE_HEIGHT / 2 - bounds.top,
     };
 

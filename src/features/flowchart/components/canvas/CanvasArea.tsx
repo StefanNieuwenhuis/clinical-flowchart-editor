@@ -1,4 +1,4 @@
-import {type ReactNode, type RefObject, useEffect, useRef} from "react";
+import {type ReactNode, type RefObject, useEffect, useRef, useState} from "react";
 import {type FlowchartState, useFlowchartStore} from "../../state/flowchartStore.ts";
 import type {FlowEdge, FlowNode, NodeType, Noop, ViewportState} from "../../model/types.ts";
 import {EdgeLayer} from "./EdgeLayer.tsx";
@@ -13,6 +13,12 @@ import {canConnectNodes} from "../../utils/connectionPolicy.ts";
 
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 2.0;
+
+type ConnectionDraft = {
+    sourceNodeId: string;
+    pointerId: number;
+    point: { x: number; y: number };
+};
 
 function getWorldPoint(
     canvas: HTMLDivElement,
@@ -40,6 +46,7 @@ function findNodeAtPoint(nodes: FlowNode[], point: { x: number; y: number }): Fl
 
 export function CanvasArea(): ReactNode {
     const canvasRef: RefObject<HTMLDivElement | null> = useRef<HTMLDivElement | null>(null);
+    const [connectionDraft, setConnectionDraft] = useState<ConnectionDraft | null>(null);
     
     const nodes: FlowNode[] = useFlowchartStore((state: FlowchartState): FlowNode[] => state.document.nodes);
     const edges: FlowEdge[] = useFlowchartStore((state: FlowchartState): FlowEdge[] => state.document.edges);
@@ -58,6 +65,25 @@ export function CanvasArea(): ReactNode {
     const setViewport: (viewport: ViewportState) => void = useFlowchartStore((state: FlowchartState): (viewport: ViewportState)=> void => state.setViewport);
     const resetViewport: Noop = useFlowchartStore((state: FlowchartState): Noop => state.resetViewport);
     const fitViewportToBounds = useFlowchartStore((state: FlowchartState) => state.fitViewportToBounds);
+
+    function handleConnectStart(
+        sourceNodeId: string,
+        input: { pointerId: number; point: { x: number; y: number } },
+    ) {
+        const canvas = canvasRef.current;
+
+        if (!canvas) {
+            return;
+        }
+
+        const point = getWorldPoint(canvas, viewport, input.point);
+
+        setConnectionDraft({
+            sourceNodeId,
+            pointerId: input.pointerId,
+            point,
+        });
+    }
 
     const panZoomHandlers = useCanvasPanZoom({
         canvasRef,
@@ -112,30 +138,69 @@ export function CanvasArea(): ReactNode {
 
     }
 
-    function handleConnectEnd(sourceNodeId: string, clientPoint: { x: number; y: number }) {
+    useEffect(() => {
+        if (!connectionDraft) {
+            return;
+        }
+
         const canvas = canvasRef.current;
 
         if (!canvas) {
+            setConnectionDraft(null);
             return;
         }
 
-        const sourceNode = nodes.find((node) => node.id === sourceNodeId);
+        function updateDraftFromEvent(event: PointerEvent) {
+            if (event.pointerId !== connectionDraft.pointerId) {
+                return;
+            }
 
-        if (!sourceNode) {
-            return;
+            setConnectionDraft((currentDraft) => {
+                if (!currentDraft || currentDraft.pointerId !== event.pointerId) {
+                    return currentDraft;
+                }
+
+                return {
+                    ...currentDraft,
+                    point: getWorldPoint(canvas, viewport, {
+                        x: event.clientX,
+                        y: event.clientY,
+                    }),
+                };
+            });
         }
 
-        const targetPoint = getWorldPoint(canvas, viewport, clientPoint);
-        const targetNode = findNodeAtPoint(nodes, targetPoint);
+        function finishDraft(event: PointerEvent) {
+            if (event.pointerId !== connectionDraft.pointerId) {
+                return;
+            }
 
-        if (!targetNode || !canConnectNodes(sourceNode.type, targetNode.type)) {
-            return;
+            const sourceNode = nodes.find((node) => node.id === connectionDraft.sourceNodeId);
+            const targetPoint = getWorldPoint(canvas, viewport, {
+                x: event.clientX,
+                y: event.clientY,
+            });
+            const targetNode = findNodeAtPoint(nodes, targetPoint);
+
+            if (sourceNode && targetNode && canConnectNodes(sourceNode.type, targetNode.type)) {
+                addEdge(sourceNode.id, targetNode.id);
+            }
+
+            setConnectionDraft(null);
         }
 
-        addEdge(sourceNode.id, targetNode.id);
-    }
+        window.addEventListener("pointermove", updateDraftFromEvent);
+        window.addEventListener("pointerup", finishDraft);
+        window.addEventListener("pointercancel", finishDraft);
+        document.body.style.userSelect = "none";
 
-
+        return () => {
+            window.removeEventListener("pointermove", updateDraftFromEvent);
+            window.removeEventListener("pointerup", finishDraft);
+            window.removeEventListener("pointercancel", finishDraft);
+            document.body.style.userSelect = "";
+        };
+    }, [addEdge, connectionDraft, nodes, viewport]);
 
     return (
         <div
@@ -156,7 +221,7 @@ export function CanvasArea(): ReactNode {
                     transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
                 }}
             >
-                <EdgeLayer nodes={nodes} edges={edges} />
+                <EdgeLayer nodes={nodes} edges={edges} previewConnection={connectionDraft} />
 
                 {
                     nodes.map((node: FlowNode) => (
@@ -167,7 +232,7 @@ export function CanvasArea(): ReactNode {
                             selected={node.id === selectedNodeId}
                             onSelect={selectNode}
                             onMove={moveNode}
-                            onConnectEnd={handleConnectEnd}
+                            onConnectStart={handleConnectStart}
                         />
                     ))
                 }

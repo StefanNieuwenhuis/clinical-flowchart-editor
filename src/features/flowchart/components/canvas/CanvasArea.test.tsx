@@ -142,12 +142,12 @@ describe('CanvasArea', () => {
             clientX: startNode!.x + NODE_WIDTH - 1,
             clientY: startNode!.y + NODE_HEIGHT / 2,
         });
-        fireEvent.pointerMove(connectHandle, {
+        fireEvent.pointerMove(window, {
             pointerId: 1,
             clientX: targetNode!.x + NODE_WIDTH / 2,
             clientY: targetNode!.y + NODE_HEIGHT / 2,
         });
-        fireEvent.pointerUp(connectHandle, {
+        fireEvent.pointerUp(window, {
             pointerId: 1,
             clientX: targetNode!.x + NODE_WIDTH / 2,
             clientY: targetNode!.y + NODE_HEIGHT / 2,
