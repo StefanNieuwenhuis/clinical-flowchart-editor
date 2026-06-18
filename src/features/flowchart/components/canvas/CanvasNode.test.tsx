@@ -2,6 +2,7 @@
 import '@testing-library/jest-dom/vitest';
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CanvasNode } from './CanvasNode';
 import { nodeTypes } from '../../model/nodeTypes';
@@ -24,6 +25,16 @@ const BASE_NODE: FlowNode = {
     x: NODE_X,
     y: NODE_Y,
 };
+
+const END_NODE: FlowNode = {
+    ...BASE_NODE,
+    id: 'end-1',
+    type: 'end',
+    title: 'Einde',
+};
+
+const CONNECT_BUTTON_LABEL = /verbind/i;
+const NODE_BUTTON_LABEL = /vraag/i;
 
 describe('CanvasNode', () => {
     afterEach(() => {
@@ -172,5 +183,155 @@ describe('CanvasNode', () => {
 
         expect(nodeButton).toHaveClass('border-slate-200');
         expect(nodeButton).toHaveClass('hover:border-slate-300');
+    });
+
+    it('renders a connect port button for non-end nodes', () => {
+        vi.mocked(useNodeDrag).mockReturnValue({
+            onPointerDown: vi.fn(),
+            onPointerMove: vi.fn(),
+            onPointerUp: vi.fn(),
+            onPointerCancel: vi.fn(),
+        });
+
+        render(
+            <CanvasNode
+                node={BASE_NODE}
+                selected={false}
+                scale={SCALE}
+                onSelect={vi.fn()}
+                onMove={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByRole('button', { name: CONNECT_BUTTON_LABEL })).toBeInTheDocument();
+    });
+
+    it('does not render a connect port button for end nodes', () => {
+        vi.mocked(useNodeDrag).mockReturnValue({
+            onPointerDown: vi.fn(),
+            onPointerMove: vi.fn(),
+            onPointerUp: vi.fn(),
+            onPointerCancel: vi.fn(),
+        });
+
+        render(
+            <CanvasNode
+                node={END_NODE}
+                selected={false}
+                scale={SCALE}
+                onSelect={vi.fn()}
+                onMove={vi.fn()}
+            />,
+        );
+
+        expect(screen.queryByRole('button', { name: CONNECT_BUTTON_LABEL })).not.toBeInTheDocument();
+    });
+
+    it('hides the connect port button when connect mode is active', () => {
+        vi.mocked(useNodeDrag).mockReturnValue({
+            onPointerDown: vi.fn(),
+            onPointerMove: vi.fn(),
+            onPointerUp: vi.fn(),
+            onPointerCancel: vi.fn(),
+        });
+
+        render(
+            <CanvasNode
+                node={BASE_NODE}
+                selected={false}
+                scale={SCALE}
+                onSelect={vi.fn()}
+                onMove={vi.fn()}
+                connectMode={true}
+                isConnectSource={false}
+            />,
+        );
+
+        expect(screen.queryByRole('button', { name: CONNECT_BUTTON_LABEL })).not.toBeInTheDocument();
+    });
+
+    it('calls onStartConnect with the node id when the port button is clicked', async () => {
+        const user = userEvent.setup();
+        const onStartConnect = vi.fn();
+
+        vi.mocked(useNodeDrag).mockReturnValue({
+            onPointerDown: vi.fn(),
+            onPointerMove: vi.fn(),
+            onPointerUp: vi.fn(),
+            onPointerCancel: vi.fn(),
+        });
+
+        render(
+            <CanvasNode
+                node={BASE_NODE}
+                selected={false}
+                scale={SCALE}
+                onSelect={vi.fn()}
+                onMove={vi.fn()}
+                onStartConnect={onStartConnect}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: CONNECT_BUTTON_LABEL }));
+
+        expect(onStartConnect).toHaveBeenCalledWith(BASE_NODE.id);
+    });
+
+    it('calls onCompleteConnect when a non-source node is clicked in connect mode', async () => {
+        const user = userEvent.setup();
+        const onCompleteConnect = vi.fn();
+
+        vi.mocked(useNodeDrag).mockReturnValue({
+            onPointerDown: vi.fn(),
+            onPointerMove: vi.fn(),
+            onPointerUp: vi.fn(),
+            onPointerCancel: vi.fn(),
+        });
+
+        render(
+            <CanvasNode
+                node={BASE_NODE}
+                selected={false}
+                scale={SCALE}
+                onSelect={vi.fn()}
+                onMove={vi.fn()}
+                connectMode={true}
+                isConnectSource={false}
+                onCompleteConnect={onCompleteConnect}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: NODE_BUTTON_LABEL }));
+
+        expect(onCompleteConnect).toHaveBeenCalledWith(BASE_NODE.id);
+    });
+
+    it('calls onCancelConnect when the source node is clicked in connect mode', async () => {
+        const user = userEvent.setup();
+        const onCancelConnect = vi.fn();
+
+        vi.mocked(useNodeDrag).mockReturnValue({
+            onPointerDown: vi.fn(),
+            onPointerMove: vi.fn(),
+            onPointerUp: vi.fn(),
+            onPointerCancel: vi.fn(),
+        });
+
+        render(
+            <CanvasNode
+                node={BASE_NODE}
+                selected={false}
+                scale={SCALE}
+                onSelect={vi.fn()}
+                onMove={vi.fn()}
+                connectMode={true}
+                isConnectSource={true}
+                onCancelConnect={onCancelConnect}
+            />,
+        );
+
+        await user.click(screen.getByRole('button', { name: NODE_BUTTON_LABEL }));
+
+        expect(onCancelConnect).toHaveBeenCalledTimes(1);
     });
 });

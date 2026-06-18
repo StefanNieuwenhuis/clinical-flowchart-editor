@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CanvasArea } from './CanvasArea';
 import { useCanvasCommandStore } from '../../state/canvasCommandStore';
 import { useFlowchartStore } from '../../state/flowchartStore';
 import { getGraphBounds } from '../../utils/graphBounds';
+import { initialFlowchart } from '../../model/initialFlowchart';
 
 describe('CanvasArea', () => {
     beforeEach(() => {
@@ -16,6 +17,10 @@ describe('CanvasArea', () => {
 
         vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
         vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(800);
+
+        HTMLElement.prototype.setPointerCapture = vi.fn();
+        HTMLElement.prototype.releasePointerCapture = vi.fn();
+        HTMLElement.prototype.hasPointerCapture = vi.fn(() => true);
     });
 
     afterEach(() => {
@@ -102,5 +107,78 @@ describe('CanvasArea', () => {
         expect(Number.isFinite(viewport.scale)).toBe(true);
         expect(viewport.scale).toBeGreaterThan(0);
         expect(viewport.scale).toBeLessThanOrEqual(1);
+    });
+
+    it('completes a connection when a port button then a target node is clicked', async () => {
+        const user = userEvent.setup();
+        const connectNodesSpy = vi.fn();
+
+        useFlowchartStore.setState({ connectNodes: connectNodesSpy });
+
+        const { container } = render(<CanvasArea />);
+
+        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
+
+        // Click the first port button (the 'start' node in initialFlowchart)
+        await user.click(portButtons[0]);
+
+        // Click the second canvas node (q_color, index 1 in initialFlowchart.nodes)
+        const canvasNodeButtons = container.querySelectorAll('[data-canvas-node]');
+        await user.click(canvasNodeButtons[1] as HTMLElement);
+
+        expect(connectNodesSpy).toHaveBeenCalledTimes(1);
+        expect(connectNodesSpy).toHaveBeenCalledWith(
+            initialFlowchart.nodes[0].id,
+            initialFlowchart.nodes[1].id,
+        );
+    });
+
+    it('cancels connect mode when the source node is clicked again', async () => {
+        const user = userEvent.setup();
+
+        const { container } = render(<CanvasArea />);
+
+        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
+        await user.click(portButtons[0]);
+
+        // In connect mode port buttons are hidden
+        expect(screen.queryAllByRole('button', { name: /verbind/i })).toHaveLength(0);
+
+        // Click the source node itself (same index as the port button clicked)
+        const canvasNodeButtons = container.querySelectorAll('[data-canvas-node]');
+        await user.click(canvasNodeButtons[0] as HTMLElement);
+
+        // Port buttons reappear after cancel
+        expect(screen.getAllByRole('button', { name: /verbind/i }).length).toBeGreaterThan(0);
+    });
+
+    it('cancels connect mode when Escape is pressed', async () => {
+        const user = userEvent.setup();
+
+        render(<CanvasArea />);
+
+        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
+        await user.click(portButtons[0]);
+
+        expect(screen.queryAllByRole('button', { name: /verbind/i })).toHaveLength(0);
+
+        await user.keyboard('{Escape}');
+
+        expect(screen.getAllByRole('button', { name: /verbind/i }).length).toBeGreaterThan(0);
+    });
+
+    it('cancels connect mode when the canvas background is clicked', async () => {
+        const user = userEvent.setup();
+
+        const { container } = render(<CanvasArea />);
+
+        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
+        await user.click(portButtons[0]);
+
+        expect(screen.queryAllByRole('button', { name: /verbind/i })).toHaveLength(0);
+
+        fireEvent.pointerDown(container.firstChild as HTMLElement, { pointerId: 1 });
+
+        expect(screen.getAllByRole('button', { name: /verbind/i }).length).toBeGreaterThan(0);
     });
 });

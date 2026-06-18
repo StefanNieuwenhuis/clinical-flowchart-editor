@@ -1,4 +1,4 @@
-import {type ReactNode, type RefObject, useEffect, useRef} from "react";
+import {type ReactNode, type RefObject, useEffect, useRef, useState} from "react";
 import {type FlowchartState, useFlowchartStore} from "../../state/flowchartStore.ts";
 import type {FlowEdge, FlowNode, NodeType, Noop, ViewportState} from "../../model/types.ts";
 import {EdgeLayer} from "./EdgeLayer.tsx";
@@ -27,7 +27,10 @@ export function CanvasArea(): ReactNode {
     );
     const selectNode: (nodeId: string) => void = useFlowchartStore((state: FlowchartState): (nodeId: string) => void => state.selectNode);
     const clearSelection: Noop = useFlowchartStore((state: FlowchartState): () => void => state.clearSelection);
+    const connectNodes = useFlowchartStore((state: FlowchartState) => state.connectNodes);
     const moveNode: (nodeId: string, position: {x: number, y:number}) => void = useFlowchartStore((state: FlowchartState): (nodeId: string, position: {x: number, y:number}) => void => state.moveNode);
+
+    const [pendingSourceId, setPendingSourceId] = useState<string | null>(null);
 
     const setViewport: (viewport: ViewportState) => void = useFlowchartStore((state: FlowchartState): (viewport: ViewportState)=> void => state.setViewport);
     const resetViewport: Noop = useFlowchartStore((state: FlowchartState): Noop => state.resetViewport);
@@ -37,8 +40,36 @@ export function CanvasArea(): ReactNode {
         canvasRef,
         viewport,
         setViewport,
-        clearSelection
+        clearSelection: () => {
+            clearSelection();
+            setPendingSourceId(null);
+        },
     });
+
+    useEffect(() => {
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === 'Escape') {
+                setPendingSourceId(null);
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    function handleStartConnect(nodeId: string) {
+        setPendingSourceId(nodeId);
+    }
+
+    function handleCompleteConnect(targetNodeId: string) {
+        if (pendingSourceId !== null) {
+            connectNodes(pendingSourceId, targetNodeId);
+        }
+        setPendingSourceId(null);
+    }
+
+    function handleCancelConnect() {
+        setPendingSourceId(null);
+    }
 
     useEffect(() => {
         function addNodeAtViewportCenter(type: NodeType) {
@@ -116,8 +147,13 @@ export function CanvasArea(): ReactNode {
                             node={node}
                             scale={viewport.scale}
                             selected={node.id === selectedNodeId}
-                            onSelect={selectNode}
+                            onSelect={pendingSourceId !== null ? () => {} : selectNode}
                             onMove={moveNode}
+                            connectMode={pendingSourceId !== null}
+                            isConnectSource={node.id === pendingSourceId}
+                            onStartConnect={handleStartConnect}
+                            onCompleteConnect={handleCompleteConnect}
+                            onCancelConnect={handleCancelConnect}
                         />
                     ))
                 }
