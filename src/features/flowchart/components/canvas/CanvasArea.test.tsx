@@ -111,6 +111,29 @@ describe('CanvasArea', () => {
         expect(viewport.scale).toBeLessThanOrEqual(1);
     });
 
+    it('shows a dotted preview edge during connect mode and updates it with mouse movement', async () => {
+        const user = userEvent.setup();
+
+        const { container } = render(<CanvasArea />);
+
+        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
+        await user.click(portButtons[0]);
+
+        const previewEdge = container.querySelector('[data-preview-edge]') as SVGPathElement;
+        expect(previewEdge).toBeTruthy();
+        const pathBefore = previewEdge.getAttribute('d');
+
+        fireEvent.pointerMove(container.firstChild as HTMLElement, {
+            pointerId: 1,
+            clientX: 500,
+            clientY: 300,
+        });
+
+        const pathAfter = (container.querySelector('[data-preview-edge]') as SVGPathElement).getAttribute('d');
+
+        expect(pathAfter).not.toBe(pathBefore);
+    });
+
     it('completes a connection when a port button then a target node is clicked', async () => {
         const user = userEvent.setup();
         const connectNodesSpy = vi.fn();
@@ -124,6 +147,7 @@ describe('CanvasArea', () => {
         await user.click(portButtons[0]);
 
         expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
+        expect(container.querySelector('[data-preview-edge]')).toBeTruthy();
 
         const canvasNodeButtons = container.querySelectorAll('[data-canvas-node]');
         await user.click(canvasNodeButtons[1] as HTMLElement);
@@ -134,6 +158,7 @@ describe('CanvasArea', () => {
             initialFlowchart.nodes[1].id,
         );
         expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
+        expect(container.querySelector('[data-preview-edge]')).toBeNull();
     });
 
     it('cancels connect mode when the source node is clicked again', async () => {
@@ -150,12 +175,13 @@ describe('CanvasArea', () => {
         await user.click(canvasNodeButtons[0] as HTMLElement);
 
         expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
+        expect(container.querySelector('[data-preview-edge]')).toBeNull();
     });
 
     it('cancels connect mode when Escape is pressed', async () => {
         const user = userEvent.setup();
 
-        render(<CanvasArea />);
+        const { container } = render(<CanvasArea />);
 
         const portButtons = screen.getAllByRole('button', { name: /verbind/i });
         await user.click(portButtons[0]);
@@ -165,6 +191,7 @@ describe('CanvasArea', () => {
         await user.keyboard('{Escape}');
 
         expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
+        expect(container.querySelector('[data-preview-edge]')).toBeNull();
     });
 
     it('cancels connect mode when the canvas background is clicked', async () => {
@@ -180,12 +207,13 @@ describe('CanvasArea', () => {
         fireEvent.pointerDown(container.firstChild as HTMLElement, { pointerId: 1 });
 
         expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
+        expect(container.querySelector('[data-preview-edge]')).toBeNull();
     });
 
     it('cancels connect mode from the explicit cancel button', async () => {
         const user = userEvent.setup();
 
-        render(<CanvasArea />);
+        const { container } = render(<CanvasArea />);
 
         const portButtons = screen.getAllByRole('button', { name: /verbind/i });
         await user.click(portButtons[0]);
@@ -193,5 +221,6 @@ describe('CanvasArea', () => {
         await user.click(screen.getByText('Annuleer (Esc)'));
 
         expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
+        expect(container.querySelector('[data-preview-edge]')).toBeNull();
     });
 });

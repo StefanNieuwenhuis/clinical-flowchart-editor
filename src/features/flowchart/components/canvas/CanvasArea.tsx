@@ -4,7 +4,7 @@ import type {FlowEdge, FlowNode, NodeType, Noop, ViewportState} from "../../mode
 import {EdgeLayer} from "./EdgeLayer.tsx";
 import {CanvasNode} from "./CanvasNode.tsx";
 import {useCanvasPanZoom} from "../../hooks/useCanvasPanZoom.ts";
-import {getGraphBounds} from "../../utils/graphBounds.ts";
+import {getGraphBounds, NODE_HEIGHT, NODE_WIDTH} from "../../utils/graphBounds.ts";
 import {ViewportControls} from "./ViewportControls.tsx";
 import {useCanvasCommandStore} from "../../state/canvasCommandStore.ts";
 import {getViewportCenterInWorld} from "../../utils/viewportMath.ts";
@@ -12,6 +12,10 @@ import {clamp} from "../../../../shared/utils/clamp.ts";
 
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 2.0;
+const PREVIEW_PADDING = 80;
+const PREVIEW_DASH = '6 6';
+
+type Point = { x: number; y: number };
 
 export function CanvasArea(): ReactNode {
     const canvasRef: RefObject<HTMLDivElement | null> = useRef<HTMLDivElement | null>(null);
@@ -31,6 +35,8 @@ export function CanvasArea(): ReactNode {
     const moveNode: (nodeId: string, position: {x: number, y:number}) => void = useFlowchartStore((state: FlowchartState): (nodeId: string, position: {x: number, y:number}) => void => state.moveNode);
 
     const [pendingSourceId, setPendingSourceId] = useState<string | null>(null);
+    const [previewCursorWorld, setPreviewCursorWorld] = useState<Point | null>(null);
+
     const pendingSourceNode = pendingSourceId
         ? nodes.find((node) => node.id === pendingSourceId) ?? null
         : null;
@@ -46,6 +52,7 @@ export function CanvasArea(): ReactNode {
         clearSelection: () => {
             clearSelection();
             setPendingSourceId(null);
+            setPreviewCursorWorld(null);
         },
     });
 
@@ -53,14 +60,42 @@ export function CanvasArea(): ReactNode {
         function handleKeyDown(event: KeyboardEvent) {
             if (event.key === 'Escape') {
                 setPendingSourceId(null);
+                setPreviewCursorWorld(null);
             }
         }
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
+    function toWorldPoint(event: React.PointerEvent<HTMLDivElement>): Point | null {
+        const canvas = canvasRef.current;
+
+        if (!canvas) {
+            return null;
+        }
+
+        const rect = canvas.getBoundingClientRect();
+
+        return {
+            x: (event.clientX - rect.left - viewport.x) / viewport.scale,
+            y: (event.clientY - rect.top - viewport.y) / viewport.scale,
+        };
+    }
+
     function handleStartConnect(nodeId: string) {
+        const sourceNode = nodes.find((node) => node.id === nodeId);
+
         setPendingSourceId(nodeId);
+
+        if (!sourceNode) {
+            setPreviewCursorWorld(null);
+            return;
+        }
+
+        setPreviewCursorWorld({
+            x: sourceNode.x + NODE_WIDTH,
+            y: sourceNode.y + NODE_HEIGHT / 2,
+        });
     }
 
     function handleCompleteConnect(targetNodeId: string) {
@@ -68,10 +103,32 @@ export function CanvasArea(): ReactNode {
             connectNodes(pendingSourceId, targetNodeId);
         }
         setPendingSourceId(null);
+        setPreviewCursorWorld(null);
     }
 
     function handleCancelConnect() {
         setPendingSourceId(null);
+        setPreviewCursorWorld(null);
+    }
+
+    function handleCanvasPointerMoveCapture(event: React.PointerEvent<HTMLDivElement>) {
+        if (pendingSourceNode === null) {
+            return;
+        }
+
+        const target = event.target;
+
+        if (target instanceof Element && target.closest('[data-canvas-ui]')) {
+            return;
+        }
+
+        const worldPoint = toWorldPoint(event);
+
+        if (!worldPoint) {
+            return;
+        }
+
+        setPreviewCursorWorld(worldPoint);
     }
 
     function handleCanvasPointerDownCapture(event: React.PointerEvent<HTMLDivElement>) {
@@ -91,6 +148,7 @@ export function CanvasArea(): ReactNode {
 
         event.stopPropagation();
         setPendingSourceId(null);
+        setPreviewCursorWorld(null);
     }
 
     useEffect(() => {
@@ -139,10 +197,45 @@ export function CanvasArea(): ReactNode {
 
     }
 
+    const previewEdge = pendingSourceNode && previewCursorWorld
+        ? (() => {
+            const start = {
+                x: pendingSourceNode.x + NODE_WIDTH,
+                y: pendingSourceNode.y + NODE_HEIGHT / 2,
+            };
+
+            const end = previewCursorWorld;
+
+            const left = Math.min(start.x, end.x) - PREVIEW_PADDING;
+            const top = Math.min(start.y, end.y) - PREVIEW_PADDING;
+            const right = Math.max(start.x, end.x) + PREVIEW_PADDING;
+            const bottom = Math.max(start.y, end.y) + PREVIEW_PADDING;
+
+            const width = right - left;
+            const height = bottom - top;
+
+            const startX = start.x - left;
+            const startY = start.y - top;
+            const endX = end.x - left;
+            const endY = end.y - top;
+
+            const controlOffset = Math.max(PREVIEW_PADDING, Math.abs(endX - startX) / 2);
+
+            return {
+                left,
+                top,
+                width,
+                height,
+                d: `M ${startX} ${startY} C ${startX + controlOffset} ${startY}, ${endX - controlOffset} ${endY}, ${endX} ${endY}`,
+            };
+        })()
+        : null;
+
     return (
         <div
             ref={canvasRef}
             {...panZoomHandlers}
+            onPointerMoveCapture={handleCanvasPointerMoveCapture}
             onPointerDownCapture={handleCanvasPointerDownCapture}
             className={[
                 'relative h-full w-full overflow-hidden bg-slate-50',
@@ -183,6 +276,28 @@ export function CanvasArea(): ReactNode {
                 }}
             >
                 <EdgeLayer nodes={nodes} edges={edges} />
+
+                {previewEdge && (
+                    <svg
+                        className="pointer-events-none absolute z-[5] overflow-visible"
+                        style={{
+                            left: previewEdge.left,
+                            top: previewEdge.top,
+                            width: previewEdge.width,
+                            height: previewEdge.height,
+                        }}
+                        viewBox={`0 0 ${previewEdge.width} ${previewEdge.height}`}
+                    >
+                        <path
+                            data-preview-edge
+                            d={previewEdge.d}
+                            fill="none"
+                            strokeWidth="2"
+                            strokeDasharray={PREVIEW_DASH}
+                            className="stroke-blue-400"
+                        />
+                    </svg>
+                )}
 
                 {
                     nodes.map((node: FlowNode) => (
