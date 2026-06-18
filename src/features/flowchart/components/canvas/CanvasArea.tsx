@@ -4,14 +4,39 @@ import type {FlowEdge, FlowNode, NodeType, Noop, ViewportState} from "../../mode
 import {EdgeLayer} from "./EdgeLayer.tsx";
 import {CanvasNode} from "./CanvasNode.tsx";
 import {useCanvasPanZoom} from "../../hooks/useCanvasPanZoom.ts";
-import {getGraphBounds} from "../../utils/graphBounds.ts";
+import {NODE_HEIGHT, NODE_WIDTH, getGraphBounds} from "../../utils/graphBounds.ts";
 import {ViewportControls} from "./ViewportControls.tsx";
 import {useCanvasCommandStore} from "../../state/canvasCommandStore.ts";
 import {getViewportCenterInWorld} from "../../utils/viewportMath.ts";
 import {clamp} from "../../../../shared/utils/clamp.ts";
+import {canConnectNodes} from "../../utils/connectionPolicy.ts";
 
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 2.0;
+
+function getWorldPoint(
+    canvas: HTMLDivElement,
+    viewport: ViewportState,
+    clientPoint: { x: number; y: number },
+) {
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+        x: (clientPoint.x - rect.left - viewport.x) / viewport.scale,
+        y: (clientPoint.y - rect.top - viewport.y) / viewport.scale,
+    };
+}
+
+function findNodeAtPoint(nodes: FlowNode[], point: { x: number; y: number }): FlowNode | null {
+    return (
+        nodes.find((node) =>
+            point.x >= node.x &&
+            point.x <= node.x + NODE_WIDTH &&
+            point.y >= node.y &&
+            point.y <= node.y + NODE_HEIGHT,
+        ) ?? null
+    );
+}
 
 export function CanvasArea(): ReactNode {
     const canvasRef: RefObject<HTMLDivElement | null> = useRef<HTMLDivElement | null>(null);
@@ -28,6 +53,7 @@ export function CanvasArea(): ReactNode {
     const selectNode: (nodeId: string) => void = useFlowchartStore((state: FlowchartState): (nodeId: string) => void => state.selectNode);
     const clearSelection: Noop = useFlowchartStore((state: FlowchartState): () => void => state.clearSelection);
     const moveNode: (nodeId: string, position: {x: number, y:number}) => void = useFlowchartStore((state: FlowchartState): (nodeId: string, position: {x: number, y:number}) => void => state.moveNode);
+    const addEdge = useFlowchartStore((state: FlowchartState) => state.addEdge);
 
     const setViewport: (viewport: ViewportState) => void = useFlowchartStore((state: FlowchartState): (viewport: ViewportState)=> void => state.setViewport);
     const resetViewport: Noop = useFlowchartStore((state: FlowchartState): Noop => state.resetViewport);
@@ -86,6 +112,29 @@ export function CanvasArea(): ReactNode {
 
     }
 
+    function handleConnectEnd(sourceNodeId: string, clientPoint: { x: number; y: number }) {
+        const canvas = canvasRef.current;
+
+        if (!canvas) {
+            return;
+        }
+
+        const sourceNode = nodes.find((node) => node.id === sourceNodeId);
+
+        if (!sourceNode) {
+            return;
+        }
+
+        const targetPoint = getWorldPoint(canvas, viewport, clientPoint);
+        const targetNode = findNodeAtPoint(nodes, targetPoint);
+
+        if (!targetNode || !canConnectNodes(sourceNode.type, targetNode.type)) {
+            return;
+        }
+
+        addEdge(sourceNode.id, targetNode.id);
+    }
+
 
 
     return (
@@ -118,6 +167,7 @@ export function CanvasArea(): ReactNode {
                             selected={node.id === selectedNodeId}
                             onSelect={selectNode}
                             onMove={moveNode}
+                            onConnectEnd={handleConnectEnd}
                         />
                     ))
                 }

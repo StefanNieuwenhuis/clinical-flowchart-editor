@@ -100,6 +100,32 @@ describe('FlowchartStore', () => {
         expect(state.document.selectedNodeId).toBe(addedNode?.id);
     });
 
+    it('should add an edge only when the connection is allowed', () => {
+        const previousEdgeCount = useFlowchartStore.getState().document.edges.length;
+
+        const added = useFlowchartStore.getState().addEdge('q_color', 'emergency');
+
+        const state = useFlowchartStore.getState();
+        const addedEdge = state.document.edges.at(-1);
+
+        expect(added).toBe(true);
+        expect(state.document.edges).toHaveLength(previousEdgeCount + 1);
+        expect(addedEdge).toMatchObject({
+            from: 'q_color',
+            to: 'emergency',
+            label: '',
+        });
+    });
+
+    it('should reject edges from end nodes', () => {
+        const previousEdgeCount = useFlowchartStore.getState().document.edges.length;
+
+        const added = useFlowchartStore.getState().addEdge('routine', 'q_color');
+
+        expect(added).toBe(false);
+        expect(useFlowchartStore.getState().document.edges).toHaveLength(previousEdgeCount);
+    });
+
     it('should initialize with a semantic version', () => {
         expect(useFlowchartStore.getState().document.version).toMatch(/^\d+\.\d+\.\d+$/);
     });

@@ -1,4 +1,5 @@
 import type { FlowchartDocument } from '../model/types';
+import {canConnectNodes} from "./connectionPolicy.ts";
 
 export type ValidationIssue = {
     severity: 'error' | 'warning';
@@ -14,6 +15,7 @@ export function validateFlowchartDocument(
     const issues: ValidationIssue[] = [];
 
     const nodeIds = new Set<string>();
+    const nodeById = new Map(document.nodes.map((node) => [node.id, node]));
     for (const node of document.nodes) {
         if (nodeIds.has(node.id)) {
             issues.push({
@@ -47,7 +49,10 @@ export function validateFlowchartDocument(
         }
         edgeIds.add(edge.id);
 
-        if (!nodeIds.has(edge.from)) {
+        const sourceNode = nodeById.get(edge.from);
+        const targetNode = nodeById.get(edge.to);
+
+        if (!sourceNode) {
             issues.push({
                 severity: 'error',
                 code: 'missing-edge-source',
@@ -56,11 +61,20 @@ export function validateFlowchartDocument(
             });
         }
 
-        if (!nodeIds.has(edge.to)) {
+        if (!targetNode) {
             issues.push({
                 severity: 'error',
                 code: 'missing-edge-target',
                 message: `Edge ${edge.id} points to missing node ${edge.to}`,
+                edgeId: edge.id,
+            });
+        }
+
+        if (sourceNode && targetNode && !canConnectNodes(sourceNode.type, targetNode.type)) {
+            issues.push({
+                severity: 'error',
+                code: 'forbidden-edge-connection',
+                message: `Edge ${edge.id} connects incompatible node types ${sourceNode.type} -> ${targetNode.type}`,
                 edgeId: edge.id,
             });
         }

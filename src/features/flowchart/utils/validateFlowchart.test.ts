@@ -78,4 +78,28 @@ describe('validateFlowchartDocument', () => {
             ]),
         );
     });
+
+    it('flags edges that violate the connection policy', () => {
+        const document = cloneDocument(initialFlowchart);
+        document.edges = [
+            {
+                id: 'e-invalid',
+                from: 'routine',
+                to: 'q_color',
+                label: '',
+            },
+        ];
+
+        const issues = validateFlowchartDocument(document);
+
+        expect(issues).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    severity: 'error',
+                    code: 'forbidden-edge-connection',
+                    edgeId: 'e-invalid',
+                }),
+            ]),
+        );
+    });
 });

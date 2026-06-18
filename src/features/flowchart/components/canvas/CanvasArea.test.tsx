@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CanvasArea } from './CanvasArea';
 import { useCanvasCommandStore } from '../../state/canvasCommandStore';
 import { useFlowchartStore } from '../../state/flowchartStore';
 import { getGraphBounds } from '../../utils/graphBounds';
+import { NODE_HEIGHT, NODE_WIDTH } from '../../utils/graphBounds';
 
 describe('CanvasArea', () => {
     beforeEach(() => {
@@ -16,6 +17,19 @@ describe('CanvasArea', () => {
 
         vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
         vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(800);
+
+        Object.defineProperty(HTMLElement.prototype, 'setPointerCapture', {
+            configurable: true,
+            value: vi.fn(),
+        });
+        Object.defineProperty(HTMLElement.prototype, 'releasePointerCapture', {
+            configurable: true,
+            value: vi.fn(),
+        });
+        Object.defineProperty(HTMLElement.prototype, 'hasPointerCapture', {
+            configurable: true,
+            value: vi.fn(() => true),
+        });
     });
 
     afterEach(() => {
@@ -102,5 +116,50 @@ describe('CanvasArea', () => {
         expect(Number.isFinite(viewport.scale)).toBe(true);
         expect(viewport.scale).toBeGreaterThan(0);
         expect(viewport.scale).toBeLessThanOrEqual(1);
+    });
+
+    it('creates an edge when a drag connects two compatible nodes', () => {
+        render(<CanvasArea />);
+
+        const startNode = useFlowchartStore
+            .getState()
+            .document.nodes.find((node) => node.id === 'start');
+        const targetNode = useFlowchartStore
+            .getState()
+            .document.nodes.find((node) => node.id === 'q_color');
+
+        expect(startNode).toBeDefined();
+        expect(targetNode).toBeDefined();
+
+        const startNodeButton = screen.getByRole('button', {
+            name: /start stoma-observatie/i,
+        });
+        const connectHandle = within(startNodeButton).getByTitle('Verbind naar een volgende stap');
+        const previousEdgeCount = useFlowchartStore.getState().document.edges.length;
+
+        fireEvent.pointerDown(connectHandle, {
+            pointerId: 1,
+            clientX: startNode!.x + NODE_WIDTH - 1,
+            clientY: startNode!.y + NODE_HEIGHT / 2,
+        });
+        fireEvent.pointerMove(connectHandle, {
+            pointerId: 1,
+            clientX: targetNode!.x + NODE_WIDTH / 2,
+            clientY: targetNode!.y + NODE_HEIGHT / 2,
+        });
+        fireEvent.pointerUp(connectHandle, {
+            pointerId: 1,
+            clientX: targetNode!.x + NODE_WIDTH / 2,
+            clientY: targetNode!.y + NODE_HEIGHT / 2,
+        });
+
+        const edges = useFlowchartStore.getState().document.edges;
+
+        expect(edges).toHaveLength(previousEdgeCount + 1);
+        expect(edges.at(-1)).toMatchObject({
+            from: 'start',
+            to: 'q_color',
+            label: '',
+        });
     });
 });

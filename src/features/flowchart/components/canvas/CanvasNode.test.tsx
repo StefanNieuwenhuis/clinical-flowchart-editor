@@ -50,6 +50,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={onSelect}
                 onMove={onMove}
+                onConnectEnd={vi.fn()}
             />,
         );
 
@@ -82,6 +83,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
+                onConnectEnd={vi.fn()}
             />,
         );
 
@@ -105,6 +107,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
+                onConnectEnd={vi.fn()}
             />,
         );
 
@@ -131,6 +134,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
+                onConnectEnd={vi.fn()}
             />,
         );
 
@@ -152,6 +156,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
+                onConnectEnd={vi.fn()}
             />,
         );
 
@@ -167,10 +172,49 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
+                onConnectEnd={vi.fn()}
             />,
         );
 
         expect(nodeButton).toHaveClass('border-slate-200');
         expect(nodeButton).toHaveClass('hover:border-slate-300');
+    });
+
+    it('renders the connect handle only for connectable nodes', () => {
+        vi.mocked(useNodeDrag).mockReturnValue({
+            onPointerDown: vi.fn(),
+            onPointerMove: vi.fn(),
+            onPointerUp: vi.fn(),
+            onPointerCancel: vi.fn(),
+        });
+
+        const { rerender } = render(
+            <CanvasNode
+                node={BASE_NODE}
+                selected={false}
+                scale={SCALE}
+                onSelect={vi.fn()}
+                onMove={vi.fn()}
+                onConnectEnd={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByTitle('Verbind naar een volgende stap')).toBeInTheDocument();
+
+        rerender(
+            <CanvasNode
+                node={{
+                    ...BASE_NODE,
+                    type: 'end',
+                }}
+                selected={false}
+                scale={SCALE}
+                onSelect={vi.fn()}
+                onMove={vi.fn()}
+                onConnectEnd={vi.fn()}
+            />,
+        );
+
+        expect(screen.queryByTitle('Verbind naar een volgende stap')).not.toBeInTheDocument();
     });
 });

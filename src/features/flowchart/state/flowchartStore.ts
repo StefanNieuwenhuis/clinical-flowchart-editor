@@ -1,14 +1,16 @@
 import {create, type StoreApi, type UseBoundStore} from "zustand";
 import { initialFlowchart } from "../model/initialFlowchart";
-import type {FlowchartDocument, FlowNode, NodeType, Noop, ViewportState} from "../model/types";
+import type {FlowchartDocument, FlowEdge, FlowNode, NodeType, Noop, RouteLabel, ViewportState} from "../model/types";
 import {createId} from "../../../shared/utils/ids.ts";
 import {createNode} from "../utils/createNode.ts";
+import {canConnectNodes} from "../utils/connectionPolicy.ts";
 
 export interface FlowchartState {
     document: FlowchartDocument;
     saveDocument: Noop;
     exportDocument: () => string;
     addNodeOfTypeAt: (type: NodeType, position: {x: number; y: number;}) => void;
+    addEdge: (from: string, to: string, label?: RouteLabel) => boolean;
     selectNode: (nodeId: string) => void;
     updateNode: (nodeId: string, patch: Partial<FlowNode>) => void;
     moveNode: (nodeId: string, position: {x: number, y: number}) => void;
@@ -69,6 +71,31 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
                 },
             };
         });
+    },
+    addEdge: (from, to, label = "") => {
+        const state = useFlowchartStore.getState();
+        const sourceNode = state.document.nodes.find((node) => node.id === from);
+        const targetNode = state.document.nodes.find((node) => node.id === to);
+
+        if (!sourceNode || !targetNode || !canConnectNodes(sourceNode.type, targetNode.type)) {
+            return false;
+        }
+
+        const edge: FlowEdge = {
+            id: createId("edge"),
+            from,
+            to,
+            label,
+        };
+
+        set((currentState) => ({
+            document: {
+                ...currentState.document,
+                edges: [...currentState.document.edges, edge],
+            },
+        }));
+
+        return true;
     },
     selectNode: (nodeId: string): void => {
         set((state: FlowchartState) => ({
