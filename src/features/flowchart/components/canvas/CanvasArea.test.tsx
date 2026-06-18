@@ -10,6 +10,8 @@ import { useFlowchartStore } from '../../state/flowchartStore';
 import { getGraphBounds } from '../../utils/graphBounds';
 import { initialFlowchart } from '../../model/initialFlowchart';
 
+const CONNECT_MODE_HINT = /verbinding maken vanaf/i;
+
 describe('CanvasArea', () => {
     beforeEach(() => {
         useFlowchartStore.setState(useFlowchartStore.getInitialState());
@@ -119,10 +121,10 @@ describe('CanvasArea', () => {
 
         const portButtons = screen.getAllByRole('button', { name: /verbind/i });
 
-        // Click the first port button (the 'start' node in initialFlowchart)
         await user.click(portButtons[0]);
 
-        // Click the second canvas node (q_color, index 1 in initialFlowchart.nodes)
+        expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
+
         const canvasNodeButtons = container.querySelectorAll('[data-canvas-node]');
         await user.click(canvasNodeButtons[1] as HTMLElement);
 
@@ -131,6 +133,7 @@ describe('CanvasArea', () => {
             initialFlowchart.nodes[0].id,
             initialFlowchart.nodes[1].id,
         );
+        expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
     });
 
     it('cancels connect mode when the source node is clicked again', async () => {
@@ -141,15 +144,12 @@ describe('CanvasArea', () => {
         const portButtons = screen.getAllByRole('button', { name: /verbind/i });
         await user.click(portButtons[0]);
 
-        // In connect mode port buttons are hidden
-        expect(screen.queryAllByRole('button', { name: /verbind/i })).toHaveLength(0);
+        expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
 
-        // Click the source node itself (same index as the port button clicked)
         const canvasNodeButtons = container.querySelectorAll('[data-canvas-node]');
         await user.click(canvasNodeButtons[0] as HTMLElement);
 
-        // Port buttons reappear after cancel
-        expect(screen.getAllByRole('button', { name: /verbind/i }).length).toBeGreaterThan(0);
+        expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
     });
 
     it('cancels connect mode when Escape is pressed', async () => {
@@ -160,11 +160,11 @@ describe('CanvasArea', () => {
         const portButtons = screen.getAllByRole('button', { name: /verbind/i });
         await user.click(portButtons[0]);
 
-        expect(screen.queryAllByRole('button', { name: /verbind/i })).toHaveLength(0);
+        expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
 
         await user.keyboard('{Escape}');
 
-        expect(screen.getAllByRole('button', { name: /verbind/i }).length).toBeGreaterThan(0);
+        expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
     });
 
     it('cancels connect mode when the canvas background is clicked', async () => {
@@ -175,10 +175,23 @@ describe('CanvasArea', () => {
         const portButtons = screen.getAllByRole('button', { name: /verbind/i });
         await user.click(portButtons[0]);
 
-        expect(screen.queryAllByRole('button', { name: /verbind/i })).toHaveLength(0);
+        expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
 
         fireEvent.pointerDown(container.firstChild as HTMLElement, { pointerId: 1 });
 
-        expect(screen.getAllByRole('button', { name: /verbind/i }).length).toBeGreaterThan(0);
+        expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
+    });
+
+    it('cancels connect mode from the explicit cancel button', async () => {
+        const user = userEvent.setup();
+
+        render(<CanvasArea />);
+
+        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
+        await user.click(portButtons[0]);
+
+        await user.click(screen.getByText('Annuleer (Esc)'));
+
+        expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
     });
 });

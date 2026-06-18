@@ -39,15 +39,23 @@ export function CanvasNode({
     });
 
     const isEndNode = node.type === 'end';
+    const connectButtonLabel = isConnectSource
+        ? `Annuleer verbinding vanaf ${node.title}`
+        : `Start verbinding vanaf ${node.title}`;
 
     function handleClick(event: MouseEvent<HTMLButtonElement>) {
-        if (!connectMode) return;
+        if (!connectMode) {
+            return;
+        }
+
         event.stopPropagation();
+
         if (isConnectSource) {
             onCancelConnect?.();
-        } else {
-            onCompleteConnect?.(node.id);
+            return;
         }
+
+        onCompleteConnect?.(node.id);
     }
 
     return (
@@ -64,9 +72,9 @@ export function CanvasNode({
                     className={[
                         "pointer-events-auto w-64 rounded-xl border bg-white p-4 text-left shadow-sm transition",
                         isConnectSource
-                            ? "border-blue-500 ring-2 ring-blue-300"
+                            ? "border-blue-600 ring-2 ring-blue-200"
                             : connectMode
-                                ? "border-slate-300 cursor-crosshair hover:border-blue-400 hover:ring-2 hover:ring-blue-100"
+                                ? "border-slate-300 cursor-pointer hover:border-emerald-500 hover:ring-2 hover:ring-emerald-100"
                                 : selected
                                     ? "border-blue-500 ring-2 ring-blue-100"
                                     : "border-slate-200 hover:border-slate-300 hover:shadow-md",
@@ -95,17 +103,29 @@ export function CanvasNode({
                     ) : null}
                 </button>
 
-                {!isEndNode && !connectMode && (
+                {!isEndNode && (
                     <button
                         type="button"
                         data-canvas-ui
-                        aria-label="Verbind"
+                        aria-label={connectButtonLabel}
                         onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                             e.stopPropagation();
+
+                            if (connectMode && isConnectSource) {
+                                onCancelConnect?.();
+                                return;
+                            }
+
                             onStartConnect?.(node.id);
                         }}
-                        className="pointer-events-auto absolute -right-4 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-slate-300 bg-white shadow-sm hover:border-blue-400 hover:bg-blue-50"
+                        className={[
+                            "pointer-events-auto absolute -right-4 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border bg-white shadow-sm transition",
+                            isConnectSource
+                                ? "border-blue-600 bg-blue-50"
+                                : "border-slate-300 hover:border-blue-400 hover:bg-blue-50",
+                        ].join(' ')}
+                        title={connectButtonLabel}
                     >
                         <Link2 className="h-3 w-3 text-slate-500" />
                     </button>

@@ -15,7 +15,7 @@ const MAX_SCALE = 2.0;
 
 export function CanvasArea(): ReactNode {
     const canvasRef: RefObject<HTMLDivElement | null> = useRef<HTMLDivElement | null>(null);
-    
+
     const nodes: FlowNode[] = useFlowchartStore((state: FlowchartState): FlowNode[] => state.document.nodes);
     const edges: FlowEdge[] = useFlowchartStore((state: FlowchartState): FlowEdge[] => state.document.edges);
     const selectedNodeId: string | null = useFlowchartStore((state: FlowchartState): string | null => state.document.selectedNodeId);
@@ -31,6 +31,9 @@ export function CanvasArea(): ReactNode {
     const moveNode: (nodeId: string, position: {x: number, y:number}) => void = useFlowchartStore((state: FlowchartState): (nodeId: string, position: {x: number, y:number}) => void => state.moveNode);
 
     const [pendingSourceId, setPendingSourceId] = useState<string | null>(null);
+    const pendingSourceNode = pendingSourceId
+        ? nodes.find((node) => node.id === pendingSourceId) ?? null
+        : null;
 
     const setViewport: (viewport: ViewportState) => void = useFlowchartStore((state: FlowchartState): (viewport: ViewportState)=> void => state.setViewport);
     const resetViewport: Noop = useFlowchartStore((state: FlowchartState): Noop => state.resetViewport);
@@ -71,6 +74,25 @@ export function CanvasArea(): ReactNode {
         setPendingSourceId(null);
     }
 
+    function handleCanvasPointerDownCapture(event: React.PointerEvent<HTMLDivElement>) {
+        if (pendingSourceId === null) {
+            return;
+        }
+
+        const target = event.target;
+
+        if (!(target instanceof Element)) {
+            return;
+        }
+
+        if (target.closest('[data-canvas-node], [data-canvas-ui]')) {
+            return;
+        }
+
+        event.stopPropagation();
+        setPendingSourceId(null);
+    }
+
     useEffect(() => {
         function addNodeAtViewportCenter(type: NodeType) {
             const canvas = canvasRef.current;
@@ -101,7 +123,7 @@ export function CanvasArea(): ReactNode {
             scale: clamp(nextScale, MIN_SCALE, MAX_SCALE),
         });
     }
-    
+
     function handleFitToScreen() {
         const canvas = canvasRef.current;
 
@@ -117,13 +139,15 @@ export function CanvasArea(): ReactNode {
 
     }
 
-
-
     return (
         <div
             ref={canvasRef}
             {...panZoomHandlers}
-            className="relative h-full w-full cursor-grab overflow-hidden bg-slate-50 active:cursor-grabbing"
+            onPointerDownCapture={handleCanvasPointerDownCapture}
+            className={[
+                'relative h-full w-full overflow-hidden bg-slate-50',
+                pendingSourceId === null ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
+            ].join(' ')}
         >
             <ViewportControls
                 scale={viewport.scale}
@@ -131,6 +155,26 @@ export function CanvasArea(): ReactNode {
                 onZoomOut={() => handleZoomTo(viewport.scale - 0.1)}
                 onReset={resetViewport} onFit={handleFitToScreen}
             />
+
+            {pendingSourceNode && (
+                <div
+                    data-canvas-ui
+                    className="pointer-events-auto absolute left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-700 shadow-sm"
+                >
+                    <span className="font-medium">
+                        Verbinding maken vanaf: {pendingSourceNode.title}
+                    </span>
+
+                    <button
+                        type="button"
+                        data-canvas-ui
+                        onClick={handleCancelConnect}
+                        className="rounded-full border border-slate-300 px-2 py-1 text-[11px] font-medium text-slate-600 hover:border-slate-400 hover:bg-slate-50"
+                    >
+                        Annuleer (Esc)
+                    </button>
+                </div>
+            )}
 
             <div
                 className="pointer-events-none absolute inset-0 origin-top-left"

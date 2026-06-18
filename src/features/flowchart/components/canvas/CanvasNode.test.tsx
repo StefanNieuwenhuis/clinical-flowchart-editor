@@ -34,7 +34,6 @@ const END_NODE: FlowNode = {
 };
 
 const CONNECT_BUTTON_LABEL = /verbind/i;
-const NODE_BUTTON_LABEL = /vraag/i;
 
 describe('CanvasNode', () => {
     afterEach(() => {
@@ -54,7 +53,7 @@ describe('CanvasNode', () => {
             onPointerCancel: vi.fn(),
         });
 
-        render(
+        const { container } = render(
             <CanvasNode
                 node={BASE_NODE}
                 selected={false}
@@ -74,7 +73,7 @@ describe('CanvasNode', () => {
             onSelect,
         });
 
-        fireEvent.pointerDown(screen.getByRole('button', { name: /vraag/i }));
+        fireEvent.pointerDown(container.querySelector('[data-canvas-node]') as HTMLElement);
         expect(onPointerDown).toHaveBeenCalledTimes(1);
     });
 
@@ -156,7 +155,7 @@ describe('CanvasNode', () => {
             onPointerCancel: vi.fn(),
         });
 
-        const { rerender } = render(
+        const { container, rerender } = render(
             <CanvasNode
                 node={BASE_NODE}
                 selected={true}
@@ -166,7 +165,7 @@ describe('CanvasNode', () => {
             />,
         );
 
-        const nodeButton = screen.getByRole('button', { name: /vraag/i });
+        const nodeButton = container.querySelector('[data-canvas-node]') as HTMLElement;
 
         expect(nodeButton).toHaveClass('ring-2');
         expect(nodeButton).toHaveClass('border-blue-500');
@@ -227,7 +226,7 @@ describe('CanvasNode', () => {
         expect(screen.queryByRole('button', { name: CONNECT_BUTTON_LABEL })).not.toBeInTheDocument();
     });
 
-    it('hides the connect port button when connect mode is active', () => {
+    it('keeps the connect port button visible during connect mode', () => {
         vi.mocked(useNodeDrag).mockReturnValue({
             onPointerDown: vi.fn(),
             onPointerMove: vi.fn(),
@@ -247,7 +246,7 @@ describe('CanvasNode', () => {
             />,
         );
 
-        expect(screen.queryByRole('button', { name: CONNECT_BUTTON_LABEL })).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: CONNECT_BUTTON_LABEL })).toBeInTheDocument();
     });
 
     it('calls onStartConnect with the node id when the port button is clicked', async () => {
@@ -288,7 +287,7 @@ describe('CanvasNode', () => {
             onPointerCancel: vi.fn(),
         });
 
-        render(
+        const { container } = render(
             <CanvasNode
                 node={BASE_NODE}
                 selected={false}
@@ -301,7 +300,7 @@ describe('CanvasNode', () => {
             />,
         );
 
-        await user.click(screen.getByRole('button', { name: NODE_BUTTON_LABEL }));
+        await user.click(container.querySelector('[data-canvas-node]') as HTMLElement);
 
         expect(onCompleteConnect).toHaveBeenCalledWith(BASE_NODE.id);
     });
@@ -317,7 +316,7 @@ describe('CanvasNode', () => {
             onPointerCancel: vi.fn(),
         });
 
-        render(
+        const { container } = render(
             <CanvasNode
                 node={BASE_NODE}
                 selected={false}
@@ -330,7 +329,7 @@ describe('CanvasNode', () => {
             />,
         );
 
-        await user.click(screen.getByRole('button', { name: NODE_BUTTON_LABEL }));
+        await user.click(container.querySelector('[data-canvas-node]') as HTMLElement);
 
         expect(onCancelConnect).toHaveBeenCalledTimes(1);
     });
