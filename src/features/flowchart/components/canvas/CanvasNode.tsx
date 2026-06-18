@@ -12,9 +12,11 @@ interface CanvasNodeProps {
     onMove: (nodeId: string, position: {x: number, y: number}) => void;
     connectMode?: boolean;
     isConnectSource?: boolean;
+    isConnectTargetBlocked?: boolean;
     onStartConnect?: (nodeId: string) => void;
     onCancelConnect?: () => void;
     onCompleteConnect?: (nodeId: string) => void;
+    onBlockedConnectAttempt?: (nodeId: string) => void;
 }
 
 export function CanvasNode({
@@ -25,9 +27,11 @@ export function CanvasNode({
     onMove,
     connectMode = false,
     isConnectSource = false,
+    isConnectTargetBlocked = false,
     onStartConnect,
     onCancelConnect,
     onCompleteConnect,
+    onBlockedConnectAttempt,
 }: CanvasNodeProps): ReactNode {
     const dragHandlers = useNodeDrag({
         nodeId: node.id,
@@ -55,6 +59,11 @@ export function CanvasNode({
             return;
         }
 
+        if (isConnectTargetBlocked) {
+            onBlockedConnectAttempt?.(node.id);
+            return;
+        }
+
         onCompleteConnect?.(node.id);
     }
 
@@ -74,7 +83,9 @@ export function CanvasNode({
                         isConnectSource
                             ? "border-blue-600 ring-2 ring-blue-200"
                             : connectMode
-                                ? "border-slate-300 cursor-pointer hover:border-emerald-500 hover:ring-2 hover:ring-emerald-100"
+                                ? isConnectTargetBlocked
+                                    ? "border-rose-300 cursor-not-allowed hover:border-rose-400 hover:ring-2 hover:ring-rose-100"
+                                    : "border-slate-300 cursor-pointer hover:border-emerald-500 hover:ring-2 hover:ring-emerald-100"
                                 : selected
                                     ? "border-blue-500 ring-2 ring-blue-100"
                                     : "border-slate-200 hover:border-slate-300 hover:shadow-md",

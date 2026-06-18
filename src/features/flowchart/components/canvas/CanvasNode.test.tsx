@@ -305,6 +305,39 @@ describe('CanvasNode', () => {
         expect(onCompleteConnect).toHaveBeenCalledWith(BASE_NODE.id);
     });
 
+    it('calls onBlockedConnectAttempt for blocked targets in connect mode', async () => {
+        const user = userEvent.setup();
+        const onBlockedConnectAttempt = vi.fn();
+        const onCompleteConnect = vi.fn();
+
+        vi.mocked(useNodeDrag).mockReturnValue({
+            onPointerDown: vi.fn(),
+            onPointerMove: vi.fn(),
+            onPointerUp: vi.fn(),
+            onPointerCancel: vi.fn(),
+        });
+
+        const { container } = render(
+            <CanvasNode
+                node={BASE_NODE}
+                selected={false}
+                scale={SCALE}
+                onSelect={vi.fn()}
+                onMove={vi.fn()}
+                connectMode={true}
+                isConnectSource={false}
+                isConnectTargetBlocked={true}
+                onBlockedConnectAttempt={onBlockedConnectAttempt}
+                onCompleteConnect={onCompleteConnect}
+            />,
+        );
+
+        await user.click(container.querySelector('[data-canvas-node]') as HTMLElement);
+
+        expect(onBlockedConnectAttempt).toHaveBeenCalledWith(BASE_NODE.id);
+        expect(onCompleteConnect).not.toHaveBeenCalled();
+    });
+
     it('calls onCancelConnect when the source node is clicked in connect mode', async () => {
         const user = userEvent.setup();
         const onCancelConnect = vi.fn();

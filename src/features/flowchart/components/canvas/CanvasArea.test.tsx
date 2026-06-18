@@ -11,6 +11,7 @@ import { getGraphBounds } from '../../utils/graphBounds';
 import { initialFlowchart } from '../../model/initialFlowchart';
 
 const CONNECT_MODE_HINT = /verbinding maken vanaf/i;
+const TARGET_START_FEEDBACK = /niet verbinden naar een startknoop/i;
 
 describe('CanvasArea', () => {
     beforeEach(() => {
@@ -134,7 +135,7 @@ describe('CanvasArea', () => {
         expect(pathAfter).not.toBe(pathBefore);
     });
 
-    it('completes a connection when a port button then a target node is clicked', async () => {
+    it('completes a connection when a valid source-target pair is clicked', async () => {
         const user = userEvent.setup();
         const connectNodesSpy = vi.fn();
 
@@ -144,7 +145,8 @@ describe('CanvasArea', () => {
 
         const portButtons = screen.getAllByRole('button', { name: /verbind/i });
 
-        await user.click(portButtons[0]);
+        // emergency -> q_color is a valid non-duplicate connection
+        await user.click(portButtons[2]);
 
         expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
         expect(container.querySelector('[data-preview-edge]')).toBeTruthy();
@@ -154,11 +156,33 @@ describe('CanvasArea', () => {
 
         expect(connectNodesSpy).toHaveBeenCalledTimes(1);
         expect(connectNodesSpy).toHaveBeenCalledWith(
-            initialFlowchart.nodes[0].id,
+            initialFlowchart.nodes[2].id,
             initialFlowchart.nodes[1].id,
         );
         expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
         expect(container.querySelector('[data-preview-edge]')).toBeNull();
+    });
+
+    it('keeps connect mode active and shows feedback when target is invalid', async () => {
+        const user = userEvent.setup();
+        const connectNodesSpy = vi.fn();
+
+        useFlowchartStore.setState({ connectNodes: connectNodesSpy });
+
+        const { container } = render(<CanvasArea />);
+
+        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
+
+        // q_color -> start is disallowed
+        await user.click(portButtons[1]);
+
+        const canvasNodeButtons = container.querySelectorAll('[data-canvas-node]');
+        await user.click(canvasNodeButtons[0] as HTMLElement);
+
+        expect(connectNodesSpy).not.toHaveBeenCalled();
+        expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent(TARGET_START_FEEDBACK);
+        expect(container.querySelector('[data-preview-edge]')).toBeTruthy();
     });
 
     it('cancels connect mode when the source node is clicked again', async () => {

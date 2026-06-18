@@ -1,6 +1,6 @@
 import {type ReactNode, type RefObject, useEffect, useRef, useState} from "react";
 import {type FlowchartState, useFlowchartStore} from "../../state/flowchartStore.ts";
-import type {FlowEdge, FlowNode, NodeType, Noop, ViewportState} from "../../model/types.ts";
+import type {FlowEdge, FlowNode, NodeType, Noop, RouteLabel, ViewportState} from "../../model/types.ts";
 import {EdgeLayer} from "./EdgeLayer.tsx";
 import {CanvasNode} from "./CanvasNode.tsx";
 import {useCanvasPanZoom} from "../../hooks/useCanvasPanZoom.ts";
@@ -14,6 +14,7 @@ const MIN_SCALE = 0.2;
 const MAX_SCALE = 2.0;
 const PREVIEW_PADDING = 80;
 const PREVIEW_DASH = '6 6';
+const LOCKING_ROUTE_LABELS = new Set<RouteLabel>(['Ja', 'Nee', 'Start']);
 
 type Point = { x: number; y: number };
 
@@ -36,6 +37,7 @@ export function CanvasArea(): ReactNode {
 
     const [pendingSourceId, setPendingSourceId] = useState<string | null>(null);
     const [previewCursorWorld, setPreviewCursorWorld] = useState<Point | null>(null);
+    const [connectFeedback, setConnectFeedback] = useState<string | null>(null);
 
     const pendingSourceNode = pendingSourceId
         ? nodes.find((node) => node.id === pendingSourceId) ?? null
@@ -53,6 +55,7 @@ export function CanvasArea(): ReactNode {
             clearSelection();
             setPendingSourceId(null);
             setPreviewCursorWorld(null);
+            setConnectFeedback(null);
         },
     });
 
@@ -61,6 +64,7 @@ export function CanvasArea(): ReactNode {
             if (event.key === 'Escape') {
                 setPendingSourceId(null);
                 setPreviewCursorWorld(null);
+                setConnectFeedback(null);
             }
         }
         window.addEventListener('keydown', handleKeyDown);
@@ -82,10 +86,39 @@ export function CanvasArea(): ReactNode {
         };
     }
 
+    function getConnectionBlockReason(fromNode: FlowNode, toNode: FlowNode): string | null {
+        if (fromNode.type === 'end') {
+            return 'Een eindknoop kan geen uitgaande verbinding hebben.';
+        }
+
+        if (toNode.type === 'start') {
+            return 'Je kunt niet verbinden naar een startknoop.';
+        }
+
+        const hasDuplicateConnection = edges.some(
+            (edge) => edge.from === fromNode.id && edge.to === toNode.id,
+        );
+
+        if (hasDuplicateConnection) {
+            return 'Deze verbinding bestaat al.';
+        }
+
+        const hasLockingOutgoingLabel = edges.some(
+            (edge) => edge.from === fromNode.id && LOCKING_ROUTE_LABELS.has(edge.label),
+        );
+
+        if (hasLockingOutgoingLabel) {
+            return 'Deze knoop heeft al Ja/Nee/Start-routes en kan geen extra route krijgen.';
+        }
+
+        return null;
+    }
+
     function handleStartConnect(nodeId: string) {
         const sourceNode = nodes.find((node) => node.id === nodeId);
 
         setPendingSourceId(nodeId);
+        setConnectFeedback(null);
 
         if (!sourceNode) {
             setPreviewCursorWorld(null);
@@ -99,16 +132,53 @@ export function CanvasArea(): ReactNode {
     }
 
     function handleCompleteConnect(targetNodeId: string) {
-        if (pendingSourceId !== null) {
-            connectNodes(pendingSourceId, targetNodeId);
+        if (pendingSourceNode === null) {
+            return;
         }
+
+        const targetNode = nodes.find((node) => node.id === targetNodeId);
+
+        if (!targetNode) {
+            return;
+        }
+
+        const blockedReason = getConnectionBlockReason(pendingSourceNode, targetNode);
+
+        if (blockedReason) {
+            setConnectFeedback(blockedReason);
+            return;
+        }
+
+        connectNodes(pendingSourceNode.id, targetNodeId);
         setPendingSourceId(null);
         setPreviewCursorWorld(null);
+        setConnectFeedback(null);
+    }
+
+    function handleBlockedConnectAttempt(targetNodeId: string) {
+        if (pendingSourceNode === null) {
+            return;
+        }
+
+        const targetNode = nodes.find((node) => node.id === targetNodeId);
+
+        if (!targetNode) {
+            return;
+        }
+
+        const blockedReason = getConnectionBlockReason(pendingSourceNode, targetNode);
+
+        if (!blockedReason) {
+            return;
+        }
+
+        setConnectFeedback(blockedReason);
     }
 
     function handleCancelConnect() {
         setPendingSourceId(null);
         setPreviewCursorWorld(null);
+        setConnectFeedback(null);
     }
 
     function handleCanvasPointerMoveCapture(event: React.PointerEvent<HTMLDivElement>) {
@@ -149,6 +219,7 @@ export function CanvasArea(): ReactNode {
         event.stopPropagation();
         setPendingSourceId(null);
         setPreviewCursorWorld(null);
+        setConnectFeedback(null);
     }
 
     useEffect(() => {
@@ -258,6 +329,12 @@ export function CanvasArea(): ReactNode {
                         Verbinding maken vanaf: {pendingSourceNode.title}
                     </span>
 
+                    {connectFeedback && (
+                        <span className="rounded-full bg-rose-50 px-2 py-1 text-[11px] font-medium text-rose-700" role="status">
+                            {connectFeedback}
+                        </span>
+                    )}
+
                     <button
                         type="button"
                         data-canvas-ui
@@ -300,21 +377,30 @@ export function CanvasArea(): ReactNode {
                 )}
 
                 {
-                    nodes.map((node: FlowNode) => (
-                        <CanvasNode
-                            key={node.id}
-                            node={node}
-                            scale={viewport.scale}
-                            selected={node.id === selectedNodeId}
-                            onSelect={pendingSourceId !== null ? () => {} : selectNode}
-                            onMove={moveNode}
-                            connectMode={pendingSourceId !== null}
-                            isConnectSource={node.id === pendingSourceId}
-                            onStartConnect={handleStartConnect}
-                            onCompleteConnect={handleCompleteConnect}
-                            onCancelConnect={handleCancelConnect}
-                        />
-                    ))
+                    nodes.map((node: FlowNode) => {
+                        const isConnectSource = node.id === pendingSourceId;
+                        const blockedReason = pendingSourceNode && !isConnectSource
+                            ? getConnectionBlockReason(pendingSourceNode, node)
+                            : null;
+
+                        return (
+                            <CanvasNode
+                                key={node.id}
+                                node={node}
+                                scale={viewport.scale}
+                                selected={node.id === selectedNodeId}
+                                onSelect={pendingSourceId !== null ? () => {} : selectNode}
+                                onMove={moveNode}
+                                connectMode={pendingSourceId !== null}
+                                isConnectSource={isConnectSource}
+                                isConnectTargetBlocked={Boolean(blockedReason)}
+                                onStartConnect={handleStartConnect}
+                                onCompleteConnect={handleCompleteConnect}
+                                onBlockedConnectAttempt={handleBlockedConnectAttempt}
+                                onCancelConnect={handleCancelConnect}
+                            />
+                        );
+                    })
                 }
             </div>
         </div>
