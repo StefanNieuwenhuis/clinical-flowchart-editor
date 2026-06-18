@@ -6,6 +6,8 @@ import type { FlowchartDocument } from '../model/types';
 const FIRST_ITEM_INDEX = 0;
 const DUPLICATE_CONNECTION_EDGE_ID = 'e-duplicate-connection';
 const END_SOURCE_EDGE_ID = 'e-end-source';
+const START_TARGET_EDGE_ID = 'e-start-target';
+const RESTRICTED_SOURCE_EXTRA_EDGE_ID = 'e-restricted-source-extra';
 const EMPTY_LABEL = '';
 
 function cloneDocument(document: FlowchartDocument): FlowchartDocument {
@@ -115,6 +117,37 @@ describe('validateFlowchartDocument', () => {
         );
     });
 
+    it('flags edges that target start nodes', () => {
+        const document = cloneDocument(initialFlowchart);
+        const startNodeId = document.nodes.find((node) => node.type === 'start')?.id;
+        const nonStartNodeId = document.nodes.find((node) => node.type !== 'start')?.id;
+
+        expect(startNodeId).toBeTruthy();
+        expect(nonStartNodeId).toBeTruthy();
+
+        document.edges = [
+            ...document.edges,
+            {
+                id: START_TARGET_EDGE_ID,
+                from: nonStartNodeId!,
+                to: startNodeId!,
+                label: EMPTY_LABEL,
+            },
+        ];
+
+        const issues = validateFlowchartDocument(document);
+
+        expect(issues).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    severity: 'error',
+                    code: 'invalid-edge-target-type',
+                    edgeId: START_TARGET_EDGE_ID,
+                }),
+            ]),
+        );
+    });
+
     it('flags duplicate source-target edge connections', () => {
         const document = cloneDocument(initialFlowchart);
         const sourceEdge = document.edges[FIRST_ITEM_INDEX];
@@ -135,6 +168,32 @@ describe('validateFlowchartDocument', () => {
                     severity: 'error',
                     code: 'duplicate-edge-connection',
                     edgeId: DUPLICATE_CONNECTION_EDGE_ID,
+                }),
+            ]),
+        );
+    });
+
+    it('flags additional connections from sources with Ja/Nee/Start labels', () => {
+        const document = cloneDocument(initialFlowchart);
+
+        document.edges = [
+            ...document.edges,
+            {
+                id: RESTRICTED_SOURCE_EXTRA_EDGE_ID,
+                from: 'q_color',
+                to: 'routine',
+                label: EMPTY_LABEL,
+            },
+        ];
+
+        const issues = validateFlowchartDocument(document);
+
+        expect(issues).toEqual(
+            expect.arrayContaining([
+                expect.objectContaining({
+                    severity: 'error',
+                    code: 'restricted-source-additional-connection',
+                    nodeId: 'q_color',
                 }),
             ]),
         );

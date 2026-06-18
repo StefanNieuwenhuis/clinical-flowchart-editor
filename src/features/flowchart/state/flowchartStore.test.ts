@@ -4,6 +4,7 @@ import {useFlowchartStore} from "./flowchartStore.ts";
 const EDGE_COUNT_INCREMENT = 1;
 const EMPTY_EDGE_LABEL = '';
 
+
 describe('FlowchartStore', () => {
     beforeEach(() => {
         useFlowchartStore.setState(useFlowchartStore.getInitialState());
@@ -183,6 +184,36 @@ describe('FlowchartStore', () => {
         const previousEdgeCount = stateBefore.edges.length;
 
         useFlowchartStore.getState().connectNodes(endNodeId!, targetId!);
+
+        expect(useFlowchartStore.getState().document.edges).toHaveLength(previousEdgeCount);
+    });
+
+    it('should reject connections to start nodes', () => {
+        const stateBefore = useFlowchartStore.getState().document;
+        const sourceId = stateBefore.nodes.find((node) => node.id === 'emergency')?.id;
+        const startNodeId = stateBefore.nodes.find((node) => node.type === 'start')?.id;
+
+        expect(sourceId).toBeTruthy();
+        expect(startNodeId).toBeTruthy();
+
+        const previousEdgeCount = stateBefore.edges.length;
+
+        useFlowchartStore.getState().connectNodes(sourceId!, startNodeId!);
+
+        expect(useFlowchartStore.getState().document.edges).toHaveLength(previousEdgeCount);
+    });
+
+    it('should reject additional connections for sources with Ja/Nee/Start labels', () => {
+        const stateBefore = useFlowchartStore.getState().document;
+        const sourceId = stateBefore.nodes.find((node) => node.id === 'q_color')?.id;
+        const targetId = stateBefore.nodes.find((node) => node.id === 'routine')?.id;
+
+        expect(sourceId).toBeTruthy();
+        expect(targetId).toBeTruthy();
+
+        const previousEdgeCount = stateBefore.edges.length;
+
+        useFlowchartStore.getState().connectNodes(sourceId!, targetId!);
 
         expect(useFlowchartStore.getState().document.edges).toHaveLength(previousEdgeCount);
     });
