@@ -10,6 +10,7 @@ export interface FlowchartState {
     exportDocument: () => string;
     addNodeOfTypeAt: (type: NodeType, position: {x: number; y: number;}) => void;
     connectNodes: (fromNodeId: string, toNodeId: string) => void;
+    updateEdge: (edgeId: string, patch: Partial<FlowEdge>) => void;
     selectNode: (nodeId: string) => void;
     updateNode: (nodeId: string, patch: Partial<FlowNode>) => void;
     moveNode: (nodeId: string, position: {x: number, y: number}) => void;
@@ -101,13 +102,44 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
                 id: createId("edge"),
                 from: fromNodeId,
                 to: toNodeId,
-                label: "",
+                label: fromNode.type === "start" ? "" : "",
             };
 
             return {
                 document: {
                     ...state.document,
                     edges: [...state.document.edges, edge],
+                },
+            };
+        });
+    },
+
+    updateEdge: (edgeId: string, patch: Partial<FlowEdge>): void => {
+        set((state: FlowchartState) => {
+            const edgeToUpdate = state.document.edges.find((edge) => edge.id === edgeId);
+            
+            if (!edgeToUpdate) {
+                return state;
+            }
+
+            const fromNode = state.document.nodes.find((node) => node.id === edgeToUpdate.from);
+            
+            if (!fromNode) {
+                return state;
+            }
+
+            const updatedPatch = { ...patch };
+            
+            if (fromNode.type === "start" && patch.label !== undefined && patch.label !== "") {
+                updatedPatch.label = "";
+            }
+
+            return {
+                document: {
+                    ...state.document,
+                    edges: state.document.edges.map((edge: FlowEdge): FlowEdge =>
+                        edge.id === edgeId ? { ...edge, ...updatedPatch } : edge,
+                    ),
                 },
             };
         });
