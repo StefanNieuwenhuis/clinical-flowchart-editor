@@ -53,7 +53,13 @@ export function EdgeLayer({ nodes, edges, nodeHeights = new Map() }: EdgeLayerPr
                     nodeHeights.get(from.id),
                     nodeHeights.get(to.id),
                 );
-                const label = getEdgeLabelPosition(from, to, bounds);
+                const label = getEdgeLabelPosition(
+                    from,
+                    to,
+                    bounds,
+                    nodeHeights.get(from.id),
+                    nodeHeights.get(to.id),
+                );
 
                 return (
                     <g key={edge.id}>

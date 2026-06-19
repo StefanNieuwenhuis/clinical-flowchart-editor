@@ -104,12 +104,28 @@ describe('edgeGeometry', () => {
             y: 200,
         });
 
-        const expected_x = ((sourceNode.x + NODE_WIDTH / 2) + (targetNode.x + NODE_WIDTH / 2)) / 2 - mocked_edge_bounds.left;
-        const expected_y = ((sourceNode.y + NODE_HEIGHT / 2) + (targetNode.y + NODE_HEIGHT / 2)) / 2 - mocked_edge_bounds.top - 10;
-
         expect(getEdgeLabelPosition(sourceNode, targetNode, mocked_edge_bounds)).toEqual({
-            x: expected_x,
-            y: expected_y
+            x: 416,
+            y: 260,
+        });
+    });
+
+    it('snaps the edge label to the bezier midpoint when node heights differ', () => {
+        const sourceNode = createTestNode({
+            id: 'source',
+            x: 100,
+            y: 200,
+        });
+
+        const targetNode = createTestNode({
+            id: 'target',
+            x: 500,
+            y: 260,
+        });
+
+        expect(getEdgeLabelPosition(sourceNode, targetNode, mocked_edge_bounds, 144, 96)).toEqual({
+            x: 416,
+            y: 290,
         });
     });
 });
