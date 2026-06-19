@@ -9,6 +9,7 @@ export interface FlowchartState {
     saveDocument: Noop;
     exportDocument: () => string;
     addNodeOfTypeAt: (type: NodeType, position: {x: number; y: number;}) => void;
+    deleteNode: (nodeId: string) => void;
     connectNodes: (fromNodeId: string, toNodeId: string) => void;
     updateEdge: (edgeId: string, patch: Partial<FlowEdge>) => void;
     selectNode: (nodeId: string) => void;
@@ -68,6 +69,30 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
                     ...state.document,
                     selectedNodeId: node.id,
                     nodes: [...state.document.nodes, node],
+                },
+            };
+        });
+    },
+
+    deleteNode: (nodeId: string): void => {
+        set((state: FlowchartState) => {
+            const nodeExists = state.document.nodes.some((node) => node.id === nodeId);
+
+            if (!nodeExists) {
+                return state;
+            }
+
+            return {
+                document: {
+                    ...state.document,
+                    nodes: state.document.nodes.filter((node) => node.id !== nodeId),
+                    edges: state.document.edges.filter(
+                        (edge) => edge.from !== nodeId && edge.to !== nodeId,
+                    ),
+                    selectedNodeId:
+                        state.document.selectedNodeId === nodeId
+                            ? null
+                            : state.document.selectedNodeId,
                 },
             };
         });

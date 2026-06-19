@@ -290,4 +290,91 @@ describe('CanvasArea', () => {
         expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
         expect(container.querySelector('[data-preview-edge]')).toBeNull();
     });
+
+    it('deletes the selected node and connected edges with Delete', async () => {
+        const user = userEvent.setup();
+        const nodeId = initialFlowchart.nodes.find((node) => node.id === 'q_leakage')?.id;
+
+        expect(nodeId).toBeTruthy();
+
+        useFlowchartStore.getState().selectNode(nodeId!);
+
+        render(<CanvasArea />);
+
+        const stateBefore = useFlowchartStore.getState().document;
+        const connectedEdgesBefore = stateBefore.edges.filter(
+            (edge) => edge.from === nodeId || edge.to === nodeId,
+        );
+
+        await user.keyboard('{Delete}');
+
+        const stateAfter = useFlowchartStore.getState().document;
+        const deletedNode = stateAfter.nodes.find((node) => node.id === nodeId);
+        const connectedEdgesAfter = stateAfter.edges.filter(
+            (edge) => edge.from === nodeId || edge.to === nodeId,
+        );
+
+        expect(deletedNode).toBeUndefined();
+        expect(connectedEdgesAfter).toHaveLength(0);
+        expect(stateAfter.edges).toHaveLength(stateBefore.edges.length - connectedEdgesBefore.length);
+        expect(stateAfter.selectedNodeId).toBeNull();
+    });
+
+    it('deletes the selected node with Backspace', async () => {
+        const user = userEvent.setup();
+        const nodeId = initialFlowchart.nodes.find((node) => node.id === 'q_leakage')?.id;
+
+        expect(nodeId).toBeTruthy();
+
+        useFlowchartStore.getState().selectNode(nodeId!);
+
+        render(<CanvasArea />);
+
+        await user.keyboard('{Backspace}');
+
+        const deletedNode = useFlowchartStore
+            .getState()
+            .document.nodes.find((node) => node.id === nodeId);
+
+        expect(deletedNode).toBeUndefined();
+    });
+
+    it('does not delete when no node is selected', async () => {
+        const user = userEvent.setup();
+
+        useFlowchartStore.getState().clearSelection();
+
+        render(<CanvasArea />);
+
+        const stateBefore = useFlowchartStore.getState().document;
+
+        await user.keyboard('{Delete}');
+
+        expect(useFlowchartStore.getState().document).toEqual(stateBefore);
+    });
+
+    it('does not delete while typing in an input', async () => {
+        const user = userEvent.setup();
+        const nodeId = initialFlowchart.nodes.find((node) => node.id === 'q_leakage')?.id;
+
+        expect(nodeId).toBeTruthy();
+
+        useFlowchartStore.getState().selectNode(nodeId!);
+
+        render(<CanvasArea />);
+
+        const input = document.createElement('input');
+        document.body.appendChild(input);
+        input.focus();
+
+        await user.keyboard('{Backspace}');
+
+        const remainingNode = useFlowchartStore
+            .getState()
+            .document.nodes.find((node) => node.id === nodeId);
+
+        expect(remainingNode).toBeTruthy();
+
+        input.remove();
+    });
 });
