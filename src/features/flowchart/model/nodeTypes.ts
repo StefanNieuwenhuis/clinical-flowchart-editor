@@ -12,7 +12,7 @@ export const nodeTypes: Record<NodeType, NodeTypeDefinition> = {
         label: "Start",
         defaultTitle: "Start",
         description: "Begin het proces met een eerste observatie.",
-        terminal: true,
+        terminal: false,
     },
     decision: {
         label: "Vraag",

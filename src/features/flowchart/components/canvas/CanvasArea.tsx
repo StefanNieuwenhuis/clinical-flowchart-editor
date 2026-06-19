@@ -318,8 +318,8 @@ export function CanvasArea(): ReactNode {
                 viewport,
             });
 
-            requestTitleFocus();
             addNodeOfTypeAt(type, position);
+            requestTitleFocus();
         }
 
         setAddNodeAtViewportCenter(addNodeAtViewportCenter);

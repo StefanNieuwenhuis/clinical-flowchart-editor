@@ -7,6 +7,7 @@ import {useCanvasCommandStore} from "../../state/canvasCommandStore.ts";
 export function RightEditorPanel(): ReactNode {
     const titleInputRef = useRef<HTMLInputElement | null>(null);
     const focusTitleRequestId = useCanvasCommandStore((state) => state.focusTitleRequestId);
+    const lastHandledFocusRequestId = useRef<number>(0);
     const selectedNodeId = useFlowchartStore((state) => state.document.selectedNodeId);
     const selectedNode = useFlowchartStore(
         (state) => state.document.nodes.find((node) => node.id === selectedNodeId) ?? null,
@@ -15,10 +16,15 @@ export function RightEditorPanel(): ReactNode {
     const clearSelection: Noop = useFlowchartStore((state: FlowchartState): Noop => state.clearSelection);
 
     useEffect(() => {
+        if (focusTitleRequestId === lastHandledFocusRequestId.current) {
+            return;
+        }
+
         if (!selectedNodeId) {
             return;
         }
 
+        lastHandledFocusRequestId.current = focusTitleRequestId;
         titleInputRef.current?.focus();
     }, [focusTitleRequestId, selectedNodeId]);
 
