@@ -6,9 +6,10 @@ import {getEdgeLabelPosition, getEdgePath} from "../../utils/edgeGeometry.ts";
 interface EdgeLayerProps {
     nodes: FlowNode[];
     edges: FlowEdge[];
+    nodeHeights?: Map<string, number>;
 }
 
-export function EdgeLayer({ nodes, edges }: EdgeLayerProps) {
+export function EdgeLayer({ nodes, edges, nodeHeights = new Map() }: EdgeLayerProps) {
     const bounds = getGraphBounds(nodes);
     const nodeById = new Map(nodes.map((node) => [node.id, node]));
 
@@ -45,8 +46,20 @@ export function EdgeLayer({ nodes, edges }: EdgeLayerProps) {
                     return null;
                 }
 
-                const path = getEdgePath(from, to, bounds);
-                const label = getEdgeLabelPosition(from, to, bounds);
+                const path = getEdgePath(
+                    from,
+                    to,
+                    bounds,
+                    nodeHeights.get(from.id),
+                    nodeHeights.get(to.id),
+                );
+                const label = getEdgeLabelPosition(
+                    from,
+                    to,
+                    bounds,
+                    nodeHeights.get(from.id),
+                    nodeHeights.get(to.id),
+                );
 
                 return (
                     <g key={edge.id}>

@@ -1,6 +1,6 @@
 import {create, type StoreApi, type UseBoundStore} from "zustand";
 import { initialFlowchart } from "../model/initialFlowchart";
-import type {FlowchartDocument, FlowNode, NodeType, Noop, ViewportState} from "../model/types";
+import type {FlowchartDocument, FlowEdge, FlowNode, NodeType, Noop, ViewportState} from "../model/types";
 import {createId} from "../../../shared/utils/ids.ts";
 import {createNode} from "../utils/createNode.ts";
 
@@ -9,6 +9,7 @@ export interface FlowchartState {
     saveDocument: Noop;
     exportDocument: () => string;
     addNodeOfTypeAt: (type: NodeType, position: {x: number; y: number;}) => void;
+    connectNodes: (fromNodeId: string, toNodeId: string) => void;
     selectNode: (nodeId: string) => void;
     updateNode: (nodeId: string, patch: Partial<FlowNode>) => void;
     moveNode: (nodeId: string, position: {x: number, y: number}) => void;
@@ -70,6 +71,48 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
             };
         });
     },
+
+    connectNodes: (fromNodeId, toNodeId) => {
+        set((state) => {
+            const fromNode = state.document.nodes.find((node) => node.id === fromNodeId);
+            const toNode = state.document.nodes.find((node) => node.id === toNodeId);
+
+            if (!fromNode || !toNode) {
+                return state;
+            }
+
+            if (fromNode.type === "end") {
+                return state;
+            }
+
+            if (toNode.type === "start") {
+                return state;
+            }
+
+            const hasDuplicateConnection = state.document.edges.some(
+                (edge) => edge.from === fromNodeId && edge.to === toNodeId,
+            );
+
+            if (hasDuplicateConnection) {
+                return state;
+            }
+
+            const edge: FlowEdge = {
+                id: createId("edge"),
+                from: fromNodeId,
+                to: toNodeId,
+                label: "",
+            };
+
+            return {
+                document: {
+                    ...state.document,
+                    edges: [...state.document.edges, edge],
+                },
+            };
+        });
+    },
+
     selectNode: (nodeId: string): void => {
         set((state: FlowchartState) => ({
             document: {

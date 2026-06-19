@@ -14,6 +14,8 @@ export function validateFlowchartDocument(
     const issues: ValidationIssue[] = [];
 
     const nodeIds = new Set<string>();
+    const nodeTypeById = new Map<string, string>();
+
     for (const node of document.nodes) {
         if (nodeIds.has(node.id)) {
             issues.push({
@@ -24,6 +26,7 @@ export function validateFlowchartDocument(
             });
         }
         nodeIds.add(node.id);
+        nodeTypeById.set(node.id, node.type);
 
         if (!node.title.trim()) {
             issues.push({
@@ -36,6 +39,8 @@ export function validateFlowchartDocument(
     }
 
     const edgeIds = new Set<string>();
+    const edgeConnections = new Set<string>();
+
     for (const edge of document.edges) {
         if (edgeIds.has(edge.id)) {
             issues.push({
@@ -64,6 +69,38 @@ export function validateFlowchartDocument(
                 edgeId: edge.id,
             });
         }
+
+        if (nodeTypeById.get(edge.from) === 'end') {
+            issues.push({
+                severity: 'error',
+                code: 'invalid-edge-source-type',
+                message: `Edge ${edge.id} has invalid source type end`,
+                edgeId: edge.id,
+            });
+        }
+
+        if (nodeTypeById.get(edge.to) === 'start') {
+            issues.push({
+                severity: 'error',
+                code: 'invalid-edge-target-type',
+                message: `Edge ${edge.id} has invalid target type start`,
+                edgeId: edge.id,
+            });
+        }
+
+        const edgeConnectionKey = `${edge.from}->${edge.to}`;
+
+        if (edgeConnections.has(edgeConnectionKey)) {
+            issues.push({
+                severity: 'error',
+                code: 'duplicate-edge-connection',
+                message: `Duplicate edge connection: ${edge.from} -> ${edge.to}`,
+                edgeId: edge.id,
+            });
+        }
+
+        edgeConnections.add(edgeConnectionKey);
+
     }
 
     return issues;

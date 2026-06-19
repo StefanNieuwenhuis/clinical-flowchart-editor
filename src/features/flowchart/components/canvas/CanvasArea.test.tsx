@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest';
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CanvasArea } from './CanvasArea';
 import { useCanvasCommandStore } from '../../state/canvasCommandStore';
 import { useFlowchartStore } from '../../state/flowchartStore';
 import { getGraphBounds } from '../../utils/graphBounds';
+import { initialFlowchart } from '../../model/initialFlowchart';
+
+const CONNECT_MODE_HINT = /verbinding maken vanaf/i;
 
 describe('CanvasArea', () => {
     beforeEach(() => {
@@ -16,6 +19,10 @@ describe('CanvasArea', () => {
 
         vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
         vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(800);
+
+        HTMLElement.prototype.setPointerCapture = vi.fn();
+        HTMLElement.prototype.releasePointerCapture = vi.fn();
+        HTMLElement.prototype.hasPointerCapture = vi.fn(() => true);
     });
 
     afterEach(() => {
@@ -102,5 +109,161 @@ describe('CanvasArea', () => {
         expect(Number.isFinite(viewport.scale)).toBe(true);
         expect(viewport.scale).toBeGreaterThan(0);
         expect(viewport.scale).toBeLessThanOrEqual(1);
+    });
+
+    it('shows a dotted preview edge during connect mode and updates it with mouse movement', () => {
+        const { container } = render(<CanvasArea />);
+
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        fireEvent.pointerDown(sourceConnectors[0] as HTMLElement);
+
+        const previewEdge = container.querySelector('[data-preview-edge]') as SVGPathElement;
+        expect(previewEdge).toBeTruthy();
+        const pathBefore = previewEdge.getAttribute('d');
+
+        fireEvent.pointerMove(container.firstChild as HTMLElement, {
+            pointerId: 1,
+            clientX: 500,
+            clientY: 300,
+        });
+
+        const pathAfter = (container.querySelector('[data-preview-edge]') as SVGPathElement).getAttribute('d');
+
+        expect(pathAfter).not.toBe(pathBefore);
+    });
+
+    it('completes a connection when a valid source-target pair is clicked', () => {
+        const connectNodesSpy = vi.fn();
+
+        useFlowchartStore.setState({ connectNodes: connectNodesSpy });
+
+        const { container } = render(<CanvasArea />);
+
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        const targetConnectors = container.querySelectorAll('[data-connector="target"]');
+
+        // emergency (nodes[2]) -> q_color (nodes[1])
+        // emergency is sourceConnectors[2], q_color is targetConnectors[0]
+        fireEvent.pointerDown(sourceConnectors[2] as HTMLElement);
+
+        expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
+        expect(container.querySelector('[data-preview-edge]')).toBeTruthy();
+
+        fireEvent.pointerUp(targetConnectors[0] as HTMLElement);
+
+        expect(connectNodesSpy).toHaveBeenCalledTimes(1);
+        expect(connectNodesSpy).toHaveBeenCalledWith(
+            initialFlowchart.nodes[2].id,
+            initialFlowchart.nodes[1].id,
+        );
+        expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
+        expect(container.querySelector('[data-preview-edge]')).toBeNull();
+    });
+
+    it('allows connecting to a target node that already has other connections', () => {
+        const connectNodesSpy = vi.fn();
+
+        useFlowchartStore.setState({ connectNodes: connectNodesSpy });
+
+        const { container } = render(<CanvasArea />);
+
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        const targetConnectors = container.querySelectorAll('[data-connector="target"]');
+
+        // emergency (nodes[2]) -> q_leakage (nodes[3])
+        // emergency is sourceConnectors[2], q_leakage is targetConnectors[2]
+        fireEvent.pointerDown(sourceConnectors[2] as HTMLElement);
+
+        fireEvent.pointerUp(targetConnectors[2] as HTMLElement);
+
+        expect(connectNodesSpy).toHaveBeenCalledTimes(1);
+        expect(connectNodesSpy).toHaveBeenCalledWith(
+            initialFlowchart.nodes[2].id,
+            initialFlowchart.nodes[3].id,
+        );
+        expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
+    });
+
+    it('keeps connect mode active and shows feedback when target is invalid', () => {
+        const connectNodesSpy = vi.fn();
+
+        useFlowchartStore.setState({ connectNodes: connectNodesSpy });
+
+        const { container } = render(<CanvasArea />);
+
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        const targetConnectors = container.querySelectorAll('[data-connector="target"]');
+
+        // q_color (nodes[1]) -> q_leakage (nodes[3]) is a duplicate connection (already exists as edge e3)
+        // q_color is sourceConnectors[1], q_leakage is targetConnectors[2]
+        fireEvent.pointerDown(sourceConnectors[1] as HTMLElement);
+
+        fireEvent.pointerUp(targetConnectors[2] as HTMLElement);
+
+        expect(connectNodesSpy).not.toHaveBeenCalled();
+        expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent(/deze verbinding bestaat al/i);
+        expect(container.querySelector('[data-preview-edge]')).toBeTruthy();
+    });
+
+    it('cancels connect mode when the source node is clicked again', async () => {
+        const user = userEvent.setup();
+
+        const { container } = render(<CanvasArea />);
+
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        fireEvent.pointerDown(sourceConnectors[0] as HTMLElement);
+
+        expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
+
+        const canvasNodeButtons = container.querySelectorAll('[data-canvas-node]');
+        await user.click(canvasNodeButtons[0] as HTMLElement);
+
+        expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
+        expect(container.querySelector('[data-preview-edge]')).toBeNull();
+    });
+
+    it('cancels connect mode when Escape is pressed', async () => {
+        const user = userEvent.setup();
+
+        const { container } = render(<CanvasArea />);
+
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        fireEvent.pointerDown(sourceConnectors[0] as HTMLElement);
+
+        expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
+
+        await user.keyboard('{Escape}');
+
+        expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
+        expect(container.querySelector('[data-preview-edge]')).toBeNull();
+    });
+
+    it('cancels connect mode when the canvas background is clicked', () => {
+        const { container } = render(<CanvasArea />);
+
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        fireEvent.pointerDown(sourceConnectors[0] as HTMLElement);
+
+        expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
+
+        fireEvent.pointerDown(container.firstChild as HTMLElement, { pointerId: 1 });
+
+        expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
+        expect(container.querySelector('[data-preview-edge]')).toBeNull();
+    });
+
+    it('cancels connect mode from the explicit cancel button', async () => {
+        const user = userEvent.setup();
+
+        const { container } = render(<CanvasArea />);
+
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        fireEvent.pointerDown(sourceConnectors[0] as HTMLElement);
+
+        await user.click(screen.getByText('Annuleer (Esc)'));
+
+        expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
+        expect(container.querySelector('[data-preview-edge]')).toBeNull();
     });
 });
