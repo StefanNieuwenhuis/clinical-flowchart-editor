@@ -30,7 +30,7 @@ export function LeftPanel() {
                         >
                             <div className="font-medium">{definition.label}</div>
                             <div className="mt-1 text-xs text-slate-500">
-                                {definition.defaultTitle}
+                                {definition.description}
                             </div>
                         </button>
                     );

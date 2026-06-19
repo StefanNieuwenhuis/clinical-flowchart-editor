@@ -22,7 +22,7 @@ const mocked_edge_bounds = {
 function createTestNode(overrides: Partial<FlowNode> = {}): FlowNode {
     return {
         id: 'node-1',
-        type: 'question',
+        type: 'decision',
         title: 'Question',
         body: '',
         x: 100,

@@ -21,7 +21,7 @@ export const initialFlowchart: FlowchartDocument = {
         },
         {
             id: "q_color",
-            type: "question",
+            type: "decision",
             title: "Is de stoma zwart, donkerpaars, erg bleek of koud?",
             body: "Alarmsignaal: mogelijke ischemie of verminderde doorbloeding.",
             x: 460,
@@ -29,15 +29,17 @@ export const initialFlowchart: FlowchartDocument = {
         },
         {
             id: "emergency",
-            type: "emergency",
+            type: "process",
             title: "Zoek met spoed medische hulp",
             body: "Contacteer de arts of spoeddienst volgens lokaal protocol.",
             x: 865,
             y: 35,
+            color: "#ef4444",
+            tags: ["emergency"],
         },
         {
             id: "q_leakage",
-            type: "question",
+            type: "decision",
             title: "Is er herhaald lekkage of laat het stomamateriaal los?",
             body: "Controleer pasvorm, huidplooien, consistentie van de output en stomagrootte.",
             x: 865,
@@ -45,7 +47,7 @@ export const initialFlowchart: FlowchartDocument = {
         },
         {
             id: "nurse",
-            type: "consult_nurse",
+            type: "process",
             title: "Raadpleeg stomaverpleegkundige",
             body: "Vraag beoordeling van pasvorm, huidconditie en productkeuze.",
             x: 1265,

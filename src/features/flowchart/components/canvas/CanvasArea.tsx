@@ -39,6 +39,7 @@ export function CanvasArea(): ReactNode {
     const setAddNodeAtViewportCenter = useCanvasCommandStore(
         (state) => state.setAddNodeAtViewportCenter,
     );
+    const requestTitleFocus = useCanvasCommandStore((state) => state.requestTitleFocus);
     const selectNode: (nodeId: string) => void = useFlowchartStore((state: FlowchartState): (nodeId: string) => void => state.selectNode);
     const clearSelection: Noop = useFlowchartStore((state: FlowchartState): () => void => state.clearSelection);
     const connectNodes = useFlowchartStore((state: FlowchartState) => state.connectNodes);
@@ -318,6 +319,7 @@ export function CanvasArea(): ReactNode {
             });
 
             addNodeOfTypeAt(type, position);
+            requestTitleFocus();
         }
 
         setAddNodeAtViewportCenter(addNodeAtViewportCenter);
@@ -325,7 +327,7 @@ export function CanvasArea(): ReactNode {
         return () => {
             setAddNodeAtViewportCenter(null);
         };
-    }, [addNodeOfTypeAt, setAddNodeAtViewportCenter, viewport]);
+    }, [addNodeOfTypeAt, requestTitleFocus, setAddNodeAtViewportCenter, viewport]);
 
     function handleZoomTo(nextScale: number) {
         setViewport({

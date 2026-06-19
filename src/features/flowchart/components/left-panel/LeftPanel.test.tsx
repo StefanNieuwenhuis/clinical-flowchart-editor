@@ -38,10 +38,10 @@ describe('Left Panel', () => {
 
         await user.click(
             screen.getByRole('button', {
-                name: new RegExp(nodeTypes.question.label, 'i'),
+                name: new RegExp(nodeTypes.decision.label, 'i'),
             }),
         );
 
-        expect(addNodeAtViewportCenter).toHaveBeenCalledWith('question');
+        expect(addNodeAtViewportCenter).toHaveBeenCalledWith('decision');
     });
 });
