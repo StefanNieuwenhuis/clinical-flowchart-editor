@@ -1,13 +1,30 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {useFlowchartStore} from "./flowchartStore.ts";
 
 const EDGE_COUNT_INCREMENT = 1;
 const EMPTY_EDGE_LABEL = '';
 
+function makeLocalStorageMock(): Storage {
+    let store: Record<string, string> = {};
+    return {
+        getItem: (key: string) => store[key] ?? null,
+        setItem: (key: string, value: string) => { store[key] = value; },
+        removeItem: (key: string) => { delete store[key]; },
+        clear: () => { store = {}; },
+        get length() { return Object.keys(store).length; },
+        key: (index: number) => Object.keys(store)[index] ?? null,
+    };
+}
+
 
 describe('FlowchartStore', () => {
     beforeEach(() => {
+        vi.stubGlobal('localStorage', makeLocalStorageMock());
         useFlowchartStore.setState(useFlowchartStore.getInitialState());
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
     });
 
     it('should select a node', () => {
@@ -480,6 +497,18 @@ describe('FlowchartStore', () => {
         useFlowchartStore.getState().saveDocument();
 
         expect(useFlowchartStore.getState().lastSaveWasManual).toBe(true);
+    });
+
+    it('should keep isDirty true and lastSaveWasManual false when explicit save fails', () => {
+        vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+            throw new Error('write failed');
+        });
+
+        useFlowchartStore.getState().updateNode('start', { title: 'Gewijzigde titel' });
+        useFlowchartStore.getState().saveDocument();
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+        expect(useFlowchartStore.getState().lastSaveWasManual).toBe(false);
     });
 
     it('should initialise lastSaveWasManual as false', () => {

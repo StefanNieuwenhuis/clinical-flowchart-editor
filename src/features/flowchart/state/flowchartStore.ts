@@ -56,11 +56,11 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
                 ...state.document,
                 version: bumpPatchVersion(state.document.version),
             };
-            saveToStorage(newDocument);
+            const saved = saveToStorage(newDocument);
             return {
-                document: newDocument,
-                isDirty: false,
-                lastSaveWasManual: true,
+                document: saved ? newDocument : state.document,
+                isDirty: saved ? false : state.isDirty,
+                lastSaveWasManual: saved,
             };
         });
     },

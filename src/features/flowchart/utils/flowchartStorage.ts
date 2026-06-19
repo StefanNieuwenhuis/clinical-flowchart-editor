@@ -24,11 +24,13 @@ function isFlowchartDocument(value: unknown): value is FlowchartDocument {
     );
 }
 
-export function saveToStorage(doc: FlowchartDocument): void {
+export function saveToStorage(doc: FlowchartDocument): boolean {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(doc));
+        return true;
     } catch {
         // localStorage unavailable (SSR / environments without storage)
+        return false;
     }
 }
 

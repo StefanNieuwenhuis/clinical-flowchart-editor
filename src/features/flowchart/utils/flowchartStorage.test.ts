@@ -39,9 +39,17 @@ describe('flowchartStorage', () => {
             title: MODIFIED_TITLE,
         };
 
-        saveToStorage(doc);
+        expect(saveToStorage(doc)).toBe(true);
 
         expect(loadFromStorage()).toEqual(doc);
+    });
+
+    it('should return false when writing to localStorage fails', () => {
+        vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+            throw new Error('write failed');
+        });
+
+        expect(saveToStorage(initialFlowchart)).toBe(false);
     });
 
     it('should return initialFlowchart when stored JSON is malformed', () => {
