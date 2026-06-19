@@ -53,13 +53,15 @@ export function useNodeDrag({
             return;
         }
 
-        const deltaX = (event.clientX - dragState.startPointerX) / scale;
-        const deltaY = (event.clientY - dragState.startPointerY) / scale;
+        const deltaXScreen = event.clientX - dragState.startPointerX;
+        const deltaYScreen = event.clientY - dragState.startPointerY;
+        const deltaX = deltaXScreen / scale;
+        const deltaY = deltaYScreen / scale;
 
         // Treat small pointer movement as a click to avoid accidental drags.
         const hasPassedThreshold =
-            Math.abs(deltaX) > DRAG_THRESHOLD_PX ||
-            Math.abs(deltaY) > DRAG_THRESHOLD_PX;
+            Math.abs(deltaXScreen) > DRAG_THRESHOLD_PX ||
+            Math.abs(deltaYScreen) > DRAG_THRESHOLD_PX;
 
         if (!hasPassedThreshold) {
             return;

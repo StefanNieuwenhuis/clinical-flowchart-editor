@@ -108,4 +108,54 @@ describe('RightEditorPanel', () => {
         expect(documentAfter.edges).toHaveLength(edgesBefore.length - connectedEdgesBefore.length);
         expect(screen.queryAllByRole('textbox')).toHaveLength(0);
     });
+
+    it('shows the edge editor when an edge is selected', () => {
+        const edgeId = useFlowchartStore.getState().document.edges[0].id;
+
+        useFlowchartStore.getState().selectEdge(edgeId);
+
+        render(<RightEditorPanel />);
+
+        expect(screen.getByText(/verbinding bewerken/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /verwijder verbinding/i })).toBeInTheDocument();
+    });
+
+    it('updates the selected edge label from the edge editor', async () => {
+        const user = userEvent.setup();
+        const edgeId = useFlowchartStore.getState().document.edges.find((edge) => edge.from === 'q_color')?.id;
+
+        expect(edgeId).toBeTruthy();
+
+        useFlowchartStore.getState().selectEdge(edgeId!);
+
+        render(<RightEditorPanel />);
+
+        await user.selectOptions(screen.getByLabelText('Route-label'), 'Ja');
+
+        const updatedEdge = useFlowchartStore
+            .getState()
+            .document.edges.find((edge) => edge.id === edgeId);
+
+        expect(updatedEdge?.label).toBe('Ja');
+    });
+
+    it('deletes the selected edge from the edge editor', async () => {
+        const user = userEvent.setup();
+        const edgeId = useFlowchartStore.getState().document.edges[0].id;
+        const edgesBefore = useFlowchartStore.getState().document.edges;
+        const selectedEdgeBefore = edgesBefore.filter((edge) => edge.id === edgeId);
+
+        useFlowchartStore.getState().selectEdge(edgeId);
+
+        render(<RightEditorPanel />);
+
+        await user.click(screen.getByRole('button', { name: /verwijder verbinding/i }));
+
+        const documentAfter = useFlowchartStore.getState().document;
+        const edgeAfter = documentAfter.edges.find((edge) => edge.id === edgeId);
+
+        expect(edgeAfter).toBeUndefined();
+        expect(documentAfter.selectedEdgeId).toBeNull();
+        expect(documentAfter.edges).toHaveLength(edgesBefore.length - selectedEdgeBefore.length);
+    });
 });

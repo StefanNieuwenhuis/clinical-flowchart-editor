@@ -184,8 +184,8 @@ describe('CanvasNode', () => {
 
         const nodeButton = container.querySelector('[data-canvas-node]') as HTMLElement;
 
-        expect(nodeButton).toHaveClass('ring-2');
-        expect(nodeButton).toHaveClass('border-blue-500');
+        expect(nodeButton).toHaveClass('ring-4');
+        expect(nodeButton).toHaveClass('border-blue-600');
 
         rerender(
             <CanvasNode
