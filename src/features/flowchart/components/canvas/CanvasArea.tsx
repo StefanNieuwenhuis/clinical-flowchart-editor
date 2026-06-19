@@ -19,6 +19,15 @@ const PREVIEW_DASH = '6 6';
 
 type Point = { x: number; y: number };
 
+function getPreviewEdgeStrokeClass(sourceNode: FlowNode | null): string {
+    if (!sourceNode) {
+        return 'stroke-slate-400';
+    }
+
+    // Non-start nodes require a Ja/Nee decision, so previews use the warning color.
+    return sourceNode.type === 'start' ? 'stroke-slate-400' : 'stroke-amber-400';
+}
+
 export function CanvasArea(): ReactNode {
     const canvasRef: RefObject<HTMLDivElement | null> = useRef<HTMLDivElement | null>(null);
 
@@ -413,6 +422,9 @@ export function CanvasArea(): ReactNode {
         })()
         : null;
 
+    const previewEdgeStrokeClass = getPreviewEdgeStrokeClass(pendingSourceNode);
+    const dragPreviewEdgeStrokeClass = getPreviewEdgeStrokeClass(dragSourceNode);
+
     return (
         <div
             ref={canvasRef}
@@ -482,7 +494,7 @@ export function CanvasArea(): ReactNode {
                             fill="none"
                             strokeWidth="2"
                             strokeDasharray={PREVIEW_DASH}
-                            className="stroke-blue-400"
+                            className={previewEdgeStrokeClass}
                         />
                     </svg>
                 )}
@@ -504,7 +516,7 @@ export function CanvasArea(): ReactNode {
                             fill="none"
                             strokeWidth="2"
                             strokeDasharray={PREVIEW_DASH}
-                            className="stroke-emerald-400"
+                            className={dragPreviewEdgeStrokeClass}
                         />
                     </svg>
                 )}

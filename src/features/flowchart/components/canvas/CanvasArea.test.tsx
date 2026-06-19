@@ -132,6 +132,30 @@ describe('CanvasArea', () => {
         expect(pathAfter).not.toBe(pathBefore);
     });
 
+    it('uses neutral preview color when connecting from start node', () => {
+        const { container } = render(<CanvasArea />);
+
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        fireEvent.pointerDown(sourceConnectors[0] as HTMLElement);
+
+        const previewEdge = container.querySelector('[data-preview-edge]') as SVGPathElement;
+
+        expect(previewEdge).toBeTruthy();
+        expect(previewEdge).toHaveClass('stroke-slate-400');
+    });
+
+    it('uses warning preview color when connecting from non-start node', () => {
+        const { container } = render(<CanvasArea />);
+
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        fireEvent.pointerDown(sourceConnectors[1] as HTMLElement);
+
+        const previewEdge = container.querySelector('[data-preview-edge]') as SVGPathElement;
+
+        expect(previewEdge).toBeTruthy();
+        expect(previewEdge).toHaveClass('stroke-amber-400');
+    });
+
     it('completes a connection when a valid source-target pair is clicked', () => {
         const connectNodesSpy = vi.fn();
 

@@ -42,7 +42,7 @@ describe('EdgeLayer', () => {
 
         const { container } = render(<EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={undefined} />);
 
-        const edgePaths = container.querySelectorAll('path[marker-end="url(#edge-arrow)"]');
+        const edgePaths = container.querySelectorAll('path[marker-end]');
 
         expect(edgePaths).toHaveLength(1);
     });
@@ -54,7 +54,7 @@ describe('EdgeLayer', () => {
 
         const { container } = render(<EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={undefined} />);
 
-        const edgePaths = container.querySelectorAll('path[marker-end="url(#edge-arrow)"]');
+        const edgePaths = container.querySelectorAll('path[marker-end]');
 
         expect(edgePaths).toHaveLength(0);
         expect(screen.queryByText('Nee')).not.toBeInTheDocument();
@@ -69,7 +69,7 @@ describe('EdgeLayer', () => {
 
         const { container } = render(<EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={undefined} />);
 
-        const edgePaths = container.querySelectorAll('path[marker-end="url(#edge-arrow)"]');
+        const edgePaths = container.querySelectorAll('path[marker-end]');
 
         expect(edgePaths).toHaveLength(3);
         expect(container.querySelectorAll('foreignObject')).toHaveLength(0);
@@ -119,7 +119,7 @@ describe('EdgeLayer', () => {
 
         const { container } = render(<EdgeLayer nodes={nodes2} edges={edges} onEdgeLabelClick={undefined} />);
 
-        const paths = container.querySelectorAll('path[marker-end="url(#edge-arrow)"]');
+        const paths = container.querySelectorAll('path[marker-end]');
         
         expect(paths).toHaveLength(2);
         
@@ -145,5 +145,25 @@ describe('EdgeLayer', () => {
             await user.click(labelGroup);
             expect(onEdgeLabelClick).toHaveBeenCalledWith('e1', expect.any(Number), expect.any(Number));
         }
+    });
+
+    it('applies semantic colors for Ja and Nee edges', () => {
+        const edges: FlowEdge[] = [
+            { id: 'e-ja', from: 'start', to: 'end', label: 'Ja' },
+            { id: 'e-nee', from: 'start', to: 'end', label: 'Nee' },
+        ];
+
+        const { container } = render(
+            <EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={undefined} />,
+        );
+
+        const edgePaths = container.querySelectorAll('path[marker-end]');
+
+        expect(edgePaths).toHaveLength(2);
+        expect(edgePaths[0]).toHaveClass('stroke-emerald-500');
+        expect(edgePaths[1]).toHaveClass('stroke-rose-500');
+
+        expect(screen.getByText('Ja')).toHaveClass('bg-emerald-50');
+        expect(screen.getByText('Nee')).toHaveClass('bg-rose-50');
     });
 });
