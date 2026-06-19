@@ -1,27 +1,50 @@
 import type {FlowNode} from "../../model/types.ts";
-import type {MouseEvent, ReactNode, PointerEvent, RefObject} from "react";
+import type {KeyboardEvent, MouseEvent, PointerEvent, ReactNode, RefObject} from "react";
 import {nodeTypes} from "../../model/nodeTypes.ts";
 import {useNodeDrag} from "../../hooks/useNodeDrag.ts";
 
-interface CanvasNodeProps {
+interface BaseCanvasNodeProps {
     node: FlowNode;
     selected: boolean;
     scale: number;
     onSelect: (nodeId: string) => void;
     onMove: (nodeId: string, position: {x: number, y: number}) => void;
-    connectMode?: boolean;
-    isConnectSource?: boolean;
-    isConnectTargetBlocked?: boolean;
-    onCancelConnect?: () => void;
-    onCompleteConnect?: (nodeId: string) => void;
-    onBlockedConnectAttempt?: (nodeId: string) => void;
-    onSourceConnectorPointerDown?: (nodeId: string, event: PointerEvent<HTMLDivElement>) => void;
-    onTargetConnectorPointerUp?: (nodeId: string, event: PointerEvent<HTMLDivElement>) => void;
-    onTargetConnectorPointerEnter?: (nodeId: string) => void;
-    onTargetConnectorPointerLeave?: () => void;
-    hoveredTargetNodeId?: string | null;
+    onSourceConnectorPointerDown?: (nodeId: string, event: PointerEvent<HTMLButtonElement>) => void;
+    onSourceConnectorActivate?: (nodeId: string) => void;
     nodeRef?: RefObject<HTMLDivElement | null> | ((element: HTMLDivElement | null) => void);
 }
+
+interface ConnectModeProps {
+    connectMode: true;
+    isConnectSource: boolean;
+    isConnectTargetBlocked: boolean;
+    hoveredTargetNodeId: string | null;
+    onCancelConnect: () => void;
+    onCompleteConnect: (nodeId: string) => void;
+    onBlockedConnectAttempt: (nodeId: string) => void;
+    onSourceConnectorPointerDown: (nodeId: string, event: PointerEvent<HTMLButtonElement>) => void;
+    onSourceConnectorActivate: (nodeId: string) => void;
+    onTargetConnectorPointerUp: (nodeId: string, event: PointerEvent<HTMLButtonElement>) => void;
+    onTargetConnectorActivate: (nodeId: string) => void;
+    onTargetConnectorPointerEnter: (nodeId: string) => void;
+    onTargetConnectorPointerLeave: () => void;
+}
+
+interface NormalModeProps {
+    connectMode?: false;
+    isConnectSource?: never;
+    isConnectTargetBlocked?: never;
+    hoveredTargetNodeId?: never;
+    onCancelConnect?: never;
+    onCompleteConnect?: never;
+    onBlockedConnectAttempt?: never;
+    onTargetConnectorPointerUp?: never;
+    onTargetConnectorActivate?: never;
+    onTargetConnectorPointerEnter?: never;
+    onTargetConnectorPointerLeave?: never;
+}
+
+type CanvasNodeProps = BaseCanvasNodeProps & (ConnectModeProps | NormalModeProps);
 
 export function CanvasNode({
     node,
@@ -32,14 +55,16 @@ export function CanvasNode({
     connectMode = false,
     isConnectSource = false,
     isConnectTargetBlocked = false,
-    onCancelConnect,
-    onCompleteConnect,
-    onBlockedConnectAttempt,
-    onSourceConnectorPointerDown,
-    onTargetConnectorPointerUp,
-    onTargetConnectorPointerEnter,
-    onTargetConnectorPointerLeave,
-    hoveredTargetNodeId,
+    onCancelConnect = undefined,
+    onCompleteConnect = undefined,
+    onBlockedConnectAttempt = undefined,
+    onSourceConnectorPointerDown = undefined,
+    onSourceConnectorActivate = undefined,
+    onTargetConnectorPointerUp = undefined,
+    onTargetConnectorActivate = undefined,
+    onTargetConnectorPointerEnter = undefined,
+    onTargetConnectorPointerLeave = undefined,
+    hoveredTargetNodeId = null,
     nodeRef,
 }: CanvasNodeProps): ReactNode {
     const dragHandlers = useNodeDrag({
@@ -79,16 +104,39 @@ export function CanvasNode({
         onCompleteConnect?.(node.id);
     }
 
-    function handleSourceConnectorPointerDown(event: PointerEvent<HTMLDivElement>) {
+    function handleSourceConnectorPointerDown(event: PointerEvent<HTMLButtonElement>) {
         event.preventDefault();
         event.stopPropagation();
         onSourceConnectorPointerDown?.(node.id, event);
     }
 
-    function handleTargetConnectorPointerUp(event: PointerEvent<HTMLDivElement>) {
+    function handleTargetConnectorPointerUp(event: PointerEvent<HTMLButtonElement>) {
         event.preventDefault();
         event.stopPropagation();
         onTargetConnectorPointerUp?.(node.id, event);
+    }
+
+    function handleSourceConnectorKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+        }
+
+        onSourceConnectorActivate?.(node.id);
+        event.preventDefault();
+    }
+
+    function handleTargetConnectorKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+        }
+
+        if (isConnectTargetBlocked) {
+            onBlockedConnectAttempt?.(node.id);
+            return;
+        }
+
+        onTargetConnectorActivate?.(node.id);
+        event.preventDefault();
     }
 
     return (
@@ -140,27 +188,31 @@ export function CanvasNode({
                 </button>
 
                 {canStartConnection && (
-                    <div
+                    <button
+                        type="button"
                         data-canvas-ui
                         data-connector="source"
                         onPointerDown={handleSourceConnectorPointerDown}
+                        onKeyDown={handleSourceConnectorKeyDown}
                         className={[
-                            "pointer-events-auto absolute -right-3 top-1/2 z-20 h-6 w-6 -translate-y-1/2 rounded-full border-2 transition cursor-grab active:cursor-grabbing",
+                            "pointer-events-auto absolute -right-3 top-1/2 z-20 h-6 w-6 -translate-y-1/2 rounded-full border-2 transition cursor-pointer",
                             isConnectSource
                                 ? "border-blue-600 bg-blue-50 shadow-md"
                                 : connectMode
                                     ? "border-blue-400 bg-blue-100 shadow-sm"
                                     : "border-slate-300 bg-white shadow-sm hover:border-blue-400 hover:bg-blue-50",
                         ].join(' ')}
-                        title={sourceConnectorLabel}
+                        aria-label={sourceConnectorLabel}
                     />
                 )}
 
                 {canAcceptConnection && (
-                    <div
+                    <button
+                        type="button"
                         data-canvas-ui
                         data-connector="target"
                         onPointerUp={handleTargetConnectorPointerUp}
+                        onKeyDown={handleTargetConnectorKeyDown}
                         onPointerEnter={() => onTargetConnectorPointerEnter?.(node.id)}
                         onPointerLeave={() => onTargetConnectorPointerLeave?.()}
                         className={[
@@ -173,7 +225,7 @@ export function CanvasNode({
                                         ? "border-emerald-600 bg-emerald-100 shadow-md ring-2 ring-emerald-200"
                                         : "border-emerald-400 bg-emerald-50 shadow-sm",
                         ].join(' ')}
-                        title={targetConnectorLabel}
+                        aria-label={targetConnectorLabel}
                     />
                 )}
             </div>

@@ -10,11 +10,11 @@ import {useCanvasCommandStore} from "../../state/canvasCommandStore.ts";
 import {getViewportCenterInWorld} from "../../utils/viewportMath.ts";
 import {clamp} from "../../../../shared/utils/clamp.ts";
 import {getSourceConnectorCenter} from "../../utils/edgeGeometry.ts";
+import {computePreviewEdge, type PreviewEdge} from "../../utils/previewEdgeGeometry.ts";
 import {EdgeLabelDropdown} from "./EdgeLabelDropdown.tsx";
 
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 2.0;
-const PREVIEW_PADDING = 80;
 const PREVIEW_DASH = '6 6';
 
 type Point = { x: number; y: number };
@@ -27,7 +27,6 @@ function getPreviewEdgeStrokeClass(sourceNode: FlowNode | null): string {
     // Non-start nodes require a Ja/Nee decision, so previews use the warning color.
     return sourceNode.type === 'start' ? 'stroke-slate-400' : 'stroke-amber-400';
 }
-
 export function CanvasArea(): ReactNode {
     const canvasRef: RefObject<HTMLDivElement | null> = useRef<HTMLDivElement | null>(null);
 
@@ -350,76 +349,28 @@ export function CanvasArea(): ReactNode {
 
     }
 
-    const previewEdge = pendingSourceNode && previewCursorWorld
-        ? (() => {
-            const start = getSourceConnectorCenter(
+    const previewEdge: PreviewEdge | null = pendingSourceNode && previewCursorWorld
+        ? computePreviewEdge(
+            getSourceConnectorCenter(
                 pendingSourceNode,
                 nodeHeights.get(pendingSourceNode.id) ?? NODE_HEIGHT,
-            );
-
-            const end = previewCursorWorld;
-
-            const left = Math.min(start.x, end.x) - PREVIEW_PADDING;
-            const top = Math.min(start.y, end.y) - PREVIEW_PADDING;
-            const right = Math.max(start.x, end.x) + PREVIEW_PADDING;
-            const bottom = Math.max(start.y, end.y) + PREVIEW_PADDING;
-
-            const width = right - left;
-            const height = bottom - top;
-
-            const startX = start.x - left;
-            const startY = start.y - top;
-            const endX = end.x - left;
-            const endY = end.y - top;
-
-            const controlOffset = Math.max(PREVIEW_PADDING, Math.abs(endX - startX) / 2);
-
-            return {
-                left,
-                top,
-                width,
-                height,
-                d: `M ${startX} ${startY} C ${startX + controlOffset} ${startY}, ${endX - controlOffset} ${endY}, ${endX} ${endY}`,
-            };
-        })()
+            ),
+            previewCursorWorld,
+        )
         : null;
 
     const dragSourceNode = dragSourceNodeId
         ? nodes.find((node) => node.id === dragSourceNodeId) ?? null
         : null;
 
-    const dragPreviewEdge = dragSourceNode && dragCursorWorld
-        ? (() => {
-            const start = getSourceConnectorCenter(
+    const dragPreviewEdge: PreviewEdge | null = dragSourceNode && dragCursorWorld
+        ? computePreviewEdge(
+            getSourceConnectorCenter(
                 dragSourceNode,
                 nodeHeights.get(dragSourceNode.id) ?? NODE_HEIGHT,
-            );
-
-            const end = dragCursorWorld;
-
-            const left = Math.min(start.x, end.x) - PREVIEW_PADDING;
-            const top = Math.min(start.y, end.y) - PREVIEW_PADDING;
-            const right = Math.max(start.x, end.x) + PREVIEW_PADDING;
-            const bottom = Math.max(start.y, end.y) + PREVIEW_PADDING;
-
-            const width = right - left;
-            const height = bottom - top;
-
-            const startX = start.x - left;
-            const startY = start.y - top;
-            const endX = end.x - left;
-            const endY = end.y - top;
-
-            const controlOffset = Math.max(PREVIEW_PADDING, Math.abs(endX - startX) / 2);
-
-            return {
-                left,
-                top,
-                width,
-                height,
-                d: `M ${startX} ${startY} C ${startX + controlOffset} ${startY}, ${endX - controlOffset} ${endY}, ${endX} ${endY}`,
-            };
-        })()
+            ),
+            dragCursorWorld,
+        )
         : null;
 
     const previewEdgeStrokeClass = getPreviewEdgeStrokeClass(pendingSourceNode);
@@ -533,6 +484,33 @@ export function CanvasArea(): ReactNode {
                             ? getConnectionBlockReason(sourceNodeForBlockCheck, node)
                             : null;
 
+                        if (isInConnectMode) {
+                            return (
+                                <CanvasNode
+                                    key={node.id}
+                                    node={node}
+                                    nodeRef={(element) => handleNodeRef(node.id, element)}
+                                    scale={viewport.scale}
+                                    selected={node.id === selectedNodeId}
+                                    onSelect={() => {}}
+                                    onMove={moveNode}
+                                    connectMode={true}
+                                    isConnectSource={isConnectSource}
+                                    isConnectTargetBlocked={Boolean(blockedReason)}
+                                    onCompleteConnect={handleCompleteConnect}
+                                    onBlockedConnectAttempt={handleBlockedConnectAttempt}
+                                    onCancelConnect={handleCancelConnect}
+                                    onSourceConnectorPointerDown={handleSourceConnectorPointerDown}
+                                    onSourceConnectorActivate={handleSourceConnectorPointerDown}
+                                    onTargetConnectorPointerUp={handleTargetConnectorPointerUp}
+                                    onTargetConnectorActivate={handleTargetConnectorPointerUp}
+                                    onTargetConnectorPointerEnter={handleTargetConnectorPointerEnter}
+                                    onTargetConnectorPointerLeave={handleTargetConnectorPointerLeave}
+                                    hoveredTargetNodeId={hoveredTargetNodeId}
+                                />
+                            );
+                        }
+
                         return (
                             <CanvasNode
                                 key={node.id}
@@ -540,19 +518,10 @@ export function CanvasArea(): ReactNode {
                                 nodeRef={(element) => handleNodeRef(node.id, element)}
                                 scale={viewport.scale}
                                 selected={node.id === selectedNodeId}
-                                onSelect={isInConnectMode ? () => {} : selectNode}
+                                onSelect={selectNode}
                                 onMove={moveNode}
-                                connectMode={isInConnectMode}
-                                isConnectSource={isConnectSource}
-                                isConnectTargetBlocked={Boolean(blockedReason)}
-                                onCompleteConnect={handleCompleteConnect}
-                                onBlockedConnectAttempt={handleBlockedConnectAttempt}
-                                onCancelConnect={handleCancelConnect}
                                 onSourceConnectorPointerDown={handleSourceConnectorPointerDown}
-                                onTargetConnectorPointerUp={handleTargetConnectorPointerUp}
-                                onTargetConnectorPointerEnter={handleTargetConnectorPointerEnter}
-                                onTargetConnectorPointerLeave={handleTargetConnectorPointerLeave}
-                                hoveredTargetNodeId={hoveredTargetNodeId}
+                                onSourceConnectorActivate={handleSourceConnectorPointerDown}
                             />
                         );
                     })
