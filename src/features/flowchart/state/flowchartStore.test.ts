@@ -253,4 +253,58 @@ describe('FlowchartStore', () => {
         expect(useFlowchartStore.getState().document.version).toBe(initialVersion);
     });
 
+    it('should update an edge label', () => {
+        const edgeId = useFlowchartStore.getState().document.edges[1].id;
+
+        useFlowchartStore.getState().updateEdge(edgeId, { label: 'Ja' });
+
+        const updatedEdge = useFlowchartStore
+            .getState()
+            .document.edges.find((edge) => edge.id === edgeId);
+
+        expect(updatedEdge?.label).toBe('Ja');
+    });
+
+    it('should prevent updating start node edge labels to non-empty', () => {
+        const startEdge = useFlowchartStore.getState().document.edges.find(
+            (edge) => {
+                const fromNode = useFlowchartStore.getState().document.nodes.find(
+                    (node) => node.id === edge.from,
+                );
+                return fromNode?.type === 'start';
+            },
+        );
+
+        expect(startEdge).toBeTruthy();
+
+        useFlowchartStore.getState().updateEdge(startEdge!.id, { label: 'Ja' });
+
+        const updatedEdge = useFlowchartStore
+            .getState()
+            .document.edges.find((edge) => edge.id === startEdge!.id);
+
+        expect(updatedEdge?.label).toBe('');
+    });
+
+    it('should allow updating non-start edge labels', () => {
+        const nonStartEdge = useFlowchartStore.getState().document.edges.find(
+            (edge) => {
+                const fromNode = useFlowchartStore.getState().document.nodes.find(
+                    (node) => node.id === edge.from,
+                );
+                return fromNode?.type !== 'start';
+            },
+        );
+
+        expect(nonStartEdge).toBeTruthy();
+
+        useFlowchartStore.getState().updateEdge(nonStartEdge!.id, { label: 'Nee' });
+
+        const updatedEdge = useFlowchartStore
+            .getState()
+            .document.edges.find((edge) => edge.id === nonStartEdge!.id);
+
+        expect(updatedEdge?.label).toBe('Nee');
+    });
+
 });

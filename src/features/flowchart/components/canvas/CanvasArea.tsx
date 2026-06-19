@@ -10,6 +10,7 @@ import {useCanvasCommandStore} from "../../state/canvasCommandStore.ts";
 import {getViewportCenterInWorld} from "../../utils/viewportMath.ts";
 import {clamp} from "../../../../shared/utils/clamp.ts";
 import {getSourceConnectorCenter} from "../../utils/edgeGeometry.ts";
+import {EdgeLabelDropdown} from "./EdgeLabelDropdown.tsx";
 
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 2.0;
@@ -17,6 +18,15 @@ const PREVIEW_PADDING = 80;
 const PREVIEW_DASH = '6 6';
 
 type Point = { x: number; y: number };
+
+function getPreviewEdgeStrokeClass(sourceNode: FlowNode | null): string {
+    if (!sourceNode) {
+        return 'stroke-slate-400';
+    }
+
+    // Non-start nodes require a Ja/Nee decision, so previews use the warning color.
+    return sourceNode.type === 'start' ? 'stroke-slate-400' : 'stroke-amber-400';
+}
 
 export function CanvasArea(): ReactNode {
     const canvasRef: RefObject<HTMLDivElement | null> = useRef<HTMLDivElement | null>(null);
@@ -33,6 +43,7 @@ export function CanvasArea(): ReactNode {
     const selectNode: (nodeId: string) => void = useFlowchartStore((state: FlowchartState): (nodeId: string) => void => state.selectNode);
     const clearSelection: Noop = useFlowchartStore((state: FlowchartState): () => void => state.clearSelection);
     const connectNodes = useFlowchartStore((state: FlowchartState) => state.connectNodes);
+    const updateEdge = useFlowchartStore((state: FlowchartState) => state.updateEdge);
     const moveNode: (nodeId: string, position: {x: number, y:number}) => void = useFlowchartStore((state: FlowchartState): (nodeId: string, position: {x: number, y:number}) => void => state.moveNode);
 
     const [pendingSourceId, setPendingSourceId] = useState<string | null>(null);
@@ -42,6 +53,8 @@ export function CanvasArea(): ReactNode {
     const [dragCursorWorld, setDragCursorWorld] = useState<Point | null>(null);
     const [hoveredTargetNodeId, setHoveredTargetNodeId] = useState<string | null>(null);
     const [nodeHeights, setNodeHeights] = useState<Map<string, number>>(new Map());
+    const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+    const [edgeLabelDropdownPos, setEdgeLabelDropdownPos] = useState<Point | null>(null);
     const nodeRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
     const pendingSourceNode = pendingSourceId
@@ -98,6 +111,8 @@ export function CanvasArea(): ReactNode {
                 setDragSourceNodeId(null);
                 setDragCursorWorld(null);
                 setHoveredTargetNodeId(null);
+                setSelectedEdgeId(null);
+                setEdgeLabelDropdownPos(null);
             }
         }
         window.addEventListener('keydown', handleKeyDown);
@@ -223,6 +238,22 @@ export function CanvasArea(): ReactNode {
         setDragSourceNodeId(null);
         setDragCursorWorld(null);
         setHoveredTargetNodeId(null);
+    }
+
+    function handleEdgeLabelClick(edgeId: string, x: number, y: number) {
+        setSelectedEdgeId(edgeId);
+        setEdgeLabelDropdownPos({ x, y });
+    }
+
+    function handleEdgeLabelSelect(edgeId: string, label: "Ja" | "Nee") {
+        updateEdge(edgeId, { label });
+        setSelectedEdgeId(null);
+        setEdgeLabelDropdownPos(null);
+    }
+
+    function handleEdgeLabelDropdownClose() {
+        setSelectedEdgeId(null);
+        setEdgeLabelDropdownPos(null);
     }
 
     function handleCanvasPointerMoveCapture(event: React.PointerEvent<HTMLDivElement>) {
@@ -391,6 +422,9 @@ export function CanvasArea(): ReactNode {
         })()
         : null;
 
+    const previewEdgeStrokeClass = getPreviewEdgeStrokeClass(pendingSourceNode);
+    const dragPreviewEdgeStrokeClass = getPreviewEdgeStrokeClass(dragSourceNode);
+
     return (
         <div
             ref={canvasRef}
@@ -441,7 +475,7 @@ export function CanvasArea(): ReactNode {
                     transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
                 }}
             >
-                <EdgeLayer nodes={nodes} edges={edges} nodeHeights={nodeHeights} />
+                <EdgeLayer nodes={nodes} edges={edges} nodeHeights={nodeHeights} onEdgeLabelClick={handleEdgeLabelClick} />
 
                 {previewEdge && (
                     <svg
@@ -460,7 +494,7 @@ export function CanvasArea(): ReactNode {
                             fill="none"
                             strokeWidth="2"
                             strokeDasharray={PREVIEW_DASH}
-                            className="stroke-blue-400"
+                            className={previewEdgeStrokeClass}
                         />
                     </svg>
                 )}
@@ -482,7 +516,7 @@ export function CanvasArea(): ReactNode {
                             fill="none"
                             strokeWidth="2"
                             strokeDasharray={PREVIEW_DASH}
-                            className="stroke-emerald-400"
+                            className={dragPreviewEdgeStrokeClass}
                         />
                     </svg>
                 )}
@@ -524,6 +558,17 @@ export function CanvasArea(): ReactNode {
                     })
                 }
             </div>
+
+            {selectedEdgeId && edgeLabelDropdownPos && (
+                <EdgeLabelDropdown
+                    edgeId={selectedEdgeId}
+                    currentLabel={edges.find((e) => e.id === selectedEdgeId)?.label ?? ""}
+                    x={viewport.x + edgeLabelDropdownPos.x * viewport.scale}
+                    y={viewport.y + edgeLabelDropdownPos.y * viewport.scale}
+                    onSelectLabel={handleEdgeLabelSelect}
+                    onClose={handleEdgeLabelDropdownClose}
+                />
+            )}
         </div>
     );
 }
