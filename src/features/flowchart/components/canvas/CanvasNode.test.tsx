@@ -33,6 +33,25 @@ const END_NODE: FlowNode = {
     title: 'Einde',
 };
 
+function createConnectModeProps(overrides: Record<string, unknown> = {}) {
+    return {
+        connectMode: true as const,
+        isConnectSource: false,
+        isConnectTargetBlocked: false,
+        hoveredTargetNodeId: null,
+        onCancelConnect: vi.fn(),
+        onCompleteConnect: vi.fn(),
+        onBlockedConnectAttempt: vi.fn(),
+        onSourceConnectorPointerDown: vi.fn(),
+        onSourceConnectorActivate: vi.fn(),
+        onTargetConnectorPointerUp: vi.fn(),
+        onTargetConnectorActivate: vi.fn(),
+        onTargetConnectorPointerEnter: vi.fn(),
+        onTargetConnectorPointerLeave: vi.fn(),
+        ...overrides,
+    };
+}
+
 describe('CanvasNode', () => {
     afterEach(() => {
         cleanup();
@@ -243,8 +262,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
-                connectMode={true}
-                isConnectSource={false}
+                {...createConnectModeProps()}
             />,
         );
 
@@ -279,6 +297,32 @@ describe('CanvasNode', () => {
         expect(onSourceConnectorPointerDown).toHaveBeenCalledWith(BASE_NODE.id, expect.any(Object));
     });
 
+    it('calls onSourceConnectorActivate when Enter is pressed on the source connector', () => {
+        const onSourceConnectorActivate = vi.fn();
+
+        vi.mocked(useNodeDrag).mockReturnValue({
+            onPointerDown: vi.fn(),
+            onPointerMove: vi.fn(),
+            onPointerUp: vi.fn(),
+            onPointerCancel: vi.fn(),
+        });
+
+        const { container } = render(
+            <CanvasNode
+                node={BASE_NODE}
+                selected={false}
+                scale={SCALE}
+                onSelect={vi.fn()}
+                onMove={vi.fn()}
+                onSourceConnectorActivate={onSourceConnectorActivate}
+            />,
+        );
+
+        fireEvent.keyDown(container.querySelector('[data-connector="source"]') as HTMLElement, { key: 'Enter' });
+
+        expect(onSourceConnectorActivate).toHaveBeenCalledWith(BASE_NODE.id);
+    });
+
     it('calls onCompleteConnect when a non-source node is clicked in connect mode', async () => {
         const user = userEvent.setup();
         const onCompleteConnect = vi.fn();
@@ -297,9 +341,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
-                connectMode={true}
-                isConnectSource={false}
-                onCompleteConnect={onCompleteConnect}
+                {...createConnectModeProps({ onCompleteConnect })}
             />,
         );
 
@@ -325,9 +367,7 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
-                connectMode={true}
-                isConnectSource={false}
-                onTargetConnectorPointerUp={onTargetConnectorPointerUp}
+                {...createConnectModeProps({ onTargetConnectorPointerUp })}
             />,
         );
 
@@ -335,6 +375,32 @@ describe('CanvasNode', () => {
         fireEvent.pointerUp(targetConnector);
 
         expect(onTargetConnectorPointerUp).toHaveBeenCalledWith(BASE_NODE.id, expect.any(Object));
+    });
+
+    it('calls onTargetConnectorActivate when Enter is pressed on the target connector in connect mode', () => {
+        const onTargetConnectorActivate = vi.fn();
+
+        vi.mocked(useNodeDrag).mockReturnValue({
+            onPointerDown: vi.fn(),
+            onPointerMove: vi.fn(),
+            onPointerUp: vi.fn(),
+            onPointerCancel: vi.fn(),
+        });
+
+        const { container } = render(
+            <CanvasNode
+                node={BASE_NODE}
+                selected={false}
+                scale={SCALE}
+                onSelect={vi.fn()}
+                onMove={vi.fn()}
+                {...createConnectModeProps({ onTargetConnectorActivate })}
+            />,
+        );
+
+        fireEvent.keyDown(container.querySelector('[data-connector="target"]') as HTMLElement, { key: 'Enter' });
+
+        expect(onTargetConnectorActivate).toHaveBeenCalledWith(BASE_NODE.id);
     });
 
     it('calls onBlockedConnectAttempt for blocked targets in connect mode', async () => {
@@ -356,11 +422,11 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
-                connectMode={true}
-                isConnectSource={false}
-                isConnectTargetBlocked={true}
-                onBlockedConnectAttempt={onBlockedConnectAttempt}
-                onCompleteConnect={onCompleteConnect}
+                {...createConnectModeProps({
+                    isConnectTargetBlocked: true,
+                    onBlockedConnectAttempt,
+                    onCompleteConnect,
+                })}
             />,
         );
 
@@ -388,9 +454,10 @@ describe('CanvasNode', () => {
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
-                connectMode={true}
-                isConnectSource={true}
-                onCancelConnect={onCancelConnect}
+                {...createConnectModeProps({
+                    isConnectSource: true,
+                    onCancelConnect,
+                })}
             />,
         );
 
