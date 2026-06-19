@@ -1,11 +1,13 @@
 import {create, type StoreApi, type UseBoundStore} from "zustand";
-import { initialFlowchart } from "../model/initialFlowchart";
 import type {FlowchartDocument, FlowEdge, FlowNode, NodeType, Noop, ViewportState} from "../model/types";
 import {createId} from "../../../shared/utils/ids.ts";
 import {createNode} from "../utils/createNode.ts";
+import {loadFromStorage, saveToStorage} from "../utils/flowchartStorage.ts";
 
 export interface FlowchartState {
     document: FlowchartDocument;
+    isDirty: boolean;
+    lastSaveWasManual: boolean;
     saveDocument: Noop;
     exportDocument: () => string;
     addNodeOfTypeAt: (type: NodeType, position: {x: number; y: number;}) => void;
@@ -41,16 +43,26 @@ function bumpPatchVersion(version: string): string {
     return `${major}.${minor}.${Number(patch) + 1}`;
 }
 
+const AUTO_SAVE_DELAY_MS = 500;
+
 export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create<FlowchartState>((set) => ({
-    document: initialFlowchart,
+    document: loadFromStorage(),
+    isDirty: false,
+    lastSaveWasManual: false,
 
     saveDocument: () => {
-        set((state) => ({
-            document: {
+        set((state) => {
+            const newDocument = {
                 ...state.document,
                 version: bumpPatchVersion(state.document.version),
-            },
-        }));
+            };
+            const saved = saveToStorage(newDocument);
+            return {
+                document: saved ? newDocument : state.document,
+                isDirty: saved ? false : state.isDirty,
+                lastSaveWasManual: saved,
+            };
+        });
     },
 
     exportDocument: () => JSON.stringify(useFlowchartStore.getState().document),
@@ -72,6 +84,7 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
                     selectedNodeId: node.id,
                     nodes: [...state.document.nodes, node],
                 },
+                isDirty: true,
             };
         });
     },
@@ -104,6 +117,7 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
                             ? null
                             : state.document.selectedEdgeId,
                 },
+                isDirty: true,
             };
         });
     },
@@ -125,6 +139,7 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
                             ? null
                             : state.document.selectedEdgeId,
                 },
+                isDirty: true,
             };
         });
     },
@@ -166,6 +181,7 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
                     ...state.document,
                     edges: [...state.document.edges, edge],
                 },
+                isDirty: true,
             };
         });
     },
@@ -197,6 +213,7 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
                         edge.id === edgeId ? { ...edge, ...updatedPatch } : edge,
                     ),
                 },
+                isDirty: true,
             };
         });
     },
@@ -239,6 +256,7 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
                     node.id === nodeId ? { ...node, ...patch } : node,
                 ),
             },
+            isDirty: true,
         }));
     },
 
@@ -256,6 +274,7 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
                         : node,
                 ),
             },
+            isDirty: true,
         }));
     },
 
@@ -307,3 +326,20 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
         }));
     },
 }));
+
+let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+useFlowchartStore.subscribe((state, prevState) => {
+    if (state.document === prevState.document) return;
+
+    if (autoSaveTimer !== null) clearTimeout(autoSaveTimer);
+
+    autoSaveTimer = setTimeout(() => {
+        autoSaveTimer = null;
+        saveToStorage(useFlowchartStore.getState().document);
+
+        if (useFlowchartStore.getState().isDirty) {
+            useFlowchartStore.setState({ isDirty: false, lastSaveWasManual: false });
+        }
+    }, AUTO_SAVE_DELAY_MS);
+});

@@ -1,13 +1,30 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {useFlowchartStore} from "./flowchartStore.ts";
 
 const EDGE_COUNT_INCREMENT = 1;
 const EMPTY_EDGE_LABEL = '';
 
+function makeLocalStorageMock(): Storage {
+    let store: Record<string, string> = {};
+    return {
+        getItem: (key: string) => store[key] ?? null,
+        setItem: (key: string, value: string) => { store[key] = value; },
+        removeItem: (key: string) => { delete store[key]; },
+        clear: () => { store = {}; },
+        get length() { return Object.keys(store).length; },
+        key: (index: number) => Object.keys(store)[index] ?? null,
+    };
+}
+
 
 describe('FlowchartStore', () => {
     beforeEach(() => {
+        vi.stubGlobal('localStorage', makeLocalStorageMock());
         useFlowchartStore.setState(useFlowchartStore.getInitialState());
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
     });
 
     it('should select a node', () => {
@@ -388,6 +405,140 @@ describe('FlowchartStore', () => {
             .document.edges.find((edge) => edge.id === nonStartEdge!.id);
 
         expect(updatedEdge?.label).toBe('Nee');
+    });
+
+    it('should initialise with isDirty false', () => {
+        expect(useFlowchartStore.getState().isDirty).toBe(false);
+    });
+
+    it('should set isDirty to true when a node is added', () => {
+        useFlowchartStore.getState().addNodeOfTypeAt('process', { x: 100, y: 100 });
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should set isDirty to true when a node is deleted', () => {
+        const nodeId = useFlowchartStore.getState().document.nodes[0].id;
+
+        useFlowchartStore.getState().deleteNode(nodeId);
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should set isDirty to true when a node is updated', () => {
+        useFlowchartStore.getState().updateNode('start', { title: 'Gewijzigde titel' });
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should set isDirty to true when a node is moved', () => {
+        useFlowchartStore.getState().moveNode('start', { x: 50, y: 50 });
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should set isDirty to true when nodes are connected', () => {
+        const sourceId = useFlowchartStore.getState().document.nodes.find((n) => n.id === 'start')?.id;
+        const targetId = useFlowchartStore.getState().document.nodes.find((n) => n.id === 'q_leakage')?.id;
+
+        expect(sourceId).toBeTruthy();
+        expect(targetId).toBeTruthy();
+
+        useFlowchartStore.getState().connectNodes(sourceId!, targetId!);
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should set isDirty to true when an edge is updated', () => {
+        const edgeId = useFlowchartStore.getState().document.edges[1].id;
+
+        useFlowchartStore.getState().updateEdge(edgeId, { label: 'Ja' });
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should set isDirty to true when an edge is deleted', () => {
+        const edgeId = useFlowchartStore.getState().document.edges[0].id;
+
+        useFlowchartStore.getState().deleteEdge(edgeId);
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should reset isDirty to false after save', () => {
+        useFlowchartStore.getState().updateNode('start', { title: 'Gewijzigde titel' });
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+
+        useFlowchartStore.getState().saveDocument();
+
+        expect(useFlowchartStore.getState().isDirty).toBe(false);
+    });
+
+    it('should reset isDirty to false after the auto-save debounce window', async () => {
+        const { vi } = await import('vitest');
+
+        vi.useFakeTimers();
+        try {
+            useFlowchartStore.getState().updateNode('start', { title: 'Gewijzigde titel' });
+            expect(useFlowchartStore.getState().isDirty).toBe(true);
+
+            vi.advanceTimersByTime(500);
+            vi.runOnlyPendingTimers();
+
+            expect(useFlowchartStore.getState().isDirty).toBe(false);
+            expect(useFlowchartStore.getState().lastSaveWasManual).toBe(false);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('should set lastSaveWasManual to true after explicit save', () => {
+        useFlowchartStore.getState().saveDocument();
+
+        expect(useFlowchartStore.getState().lastSaveWasManual).toBe(true);
+    });
+
+    it('should keep isDirty true and lastSaveWasManual false when explicit save fails', () => {
+        vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+            throw new Error('write failed');
+        });
+
+        useFlowchartStore.getState().updateNode('start', { title: 'Gewijzigde titel' });
+        useFlowchartStore.getState().saveDocument();
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+        expect(useFlowchartStore.getState().lastSaveWasManual).toBe(false);
+    });
+
+    it('should initialise lastSaveWasManual as false', () => {
+        expect(useFlowchartStore.getState().lastSaveWasManual).toBe(false);
+    });
+
+    it('should not set isDirty when selecting a node', () => {
+        useFlowchartStore.getState().selectNode('start');
+
+        expect(useFlowchartStore.getState().isDirty).toBe(false);
+    });
+
+    it('should not set isDirty when selecting an edge', () => {
+        const edgeId = useFlowchartStore.getState().document.edges[0].id;
+
+        useFlowchartStore.getState().selectEdge(edgeId);
+
+        expect(useFlowchartStore.getState().isDirty).toBe(false);
+    });
+
+    it('should not set isDirty when clearing selection', () => {
+        useFlowchartStore.getState().clearSelection();
+
+        expect(useFlowchartStore.getState().isDirty).toBe(false);
+    });
+
+    it('should not set isDirty when setting viewport', () => {
+        useFlowchartStore.getState().setViewport({ x: 10, y: 20, scale: 1.5 });
+
+        expect(useFlowchartStore.getState().isDirty).toBe(false);
     });
 
 });
