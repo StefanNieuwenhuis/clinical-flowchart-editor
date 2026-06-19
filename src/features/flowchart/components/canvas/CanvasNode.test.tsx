@@ -184,7 +184,7 @@ describe('CanvasNode', () => {
         expect(nodeButton).toHaveClass('hover:border-slate-300');
     });
 
-    it('renders a connect port button for non-end nodes', () => {
+    it('renders a source connector for non-end nodes', () => {
         vi.mocked(useNodeDrag).mockReturnValue({
             onPointerDown: vi.fn(),
             onPointerMove: vi.fn(),
@@ -192,7 +192,7 @@ describe('CanvasNode', () => {
             onPointerCancel: vi.fn(),
         });
 
-        render(
+        const { container } = render(
             <CanvasNode
                 node={BASE_NODE}
                 selected={false}
@@ -202,10 +202,11 @@ describe('CanvasNode', () => {
             />,
         );
 
-        expect(screen.getByRole('button', { name: CONNECT_BUTTON_LABEL })).toBeInTheDocument();
+        const sourceConnector = container.querySelector('[data-connector="source"]');
+        expect(sourceConnector).toBeInTheDocument();
     });
 
-    it('does not render a connect port button for end nodes', () => {
+    it('does not render a source connector for end nodes but renders a target connector', () => {
         vi.mocked(useNodeDrag).mockReturnValue({
             onPointerDown: vi.fn(),
             onPointerMove: vi.fn(),
@@ -213,7 +214,7 @@ describe('CanvasNode', () => {
             onPointerCancel: vi.fn(),
         });
 
-        render(
+        const { container } = render(
             <CanvasNode
                 node={END_NODE}
                 selected={false}
@@ -223,10 +224,13 @@ describe('CanvasNode', () => {
             />,
         );
 
-        expect(screen.queryByRole('button', { name: CONNECT_BUTTON_LABEL })).not.toBeInTheDocument();
+        const sourceConnector = container.querySelector('[data-connector="source"]');
+        const targetConnector = container.querySelector('[data-connector="target"]');
+        expect(sourceConnector).not.toBeInTheDocument();
+        expect(targetConnector).toBeInTheDocument();
     });
 
-    it('keeps the connect port button visible during connect mode', () => {
+    it('keeps the source connector visible during connect mode', () => {
         vi.mocked(useNodeDrag).mockReturnValue({
             onPointerDown: vi.fn(),
             onPointerMove: vi.fn(),
@@ -234,7 +238,7 @@ describe('CanvasNode', () => {
             onPointerCancel: vi.fn(),
         });
 
-        render(
+        const { container } = render(
             <CanvasNode
                 node={BASE_NODE}
                 selected={false}
@@ -246,12 +250,12 @@ describe('CanvasNode', () => {
             />,
         );
 
-        expect(screen.getByRole('button', { name: CONNECT_BUTTON_LABEL })).toBeInTheDocument();
+        const sourceConnector = container.querySelector('[data-connector="source"]');
+        expect(sourceConnector).toBeInTheDocument();
     });
 
-    it('calls onStartConnect with the node id when the port button is clicked', async () => {
-        const user = userEvent.setup();
-        const onStartConnect = vi.fn();
+    it('calls onSourceConnectorPointerDown when source connector is clicked', () => {
+        const onSourceConnectorPointerDown = vi.fn();
 
         vi.mocked(useNodeDrag).mockReturnValue({
             onPointerDown: vi.fn(),
@@ -260,20 +264,21 @@ describe('CanvasNode', () => {
             onPointerCancel: vi.fn(),
         });
 
-        render(
+        const { container } = render(
             <CanvasNode
                 node={BASE_NODE}
                 selected={false}
                 scale={SCALE}
                 onSelect={vi.fn()}
                 onMove={vi.fn()}
-                onStartConnect={onStartConnect}
+                onSourceConnectorPointerDown={onSourceConnectorPointerDown}
             />,
         );
 
-        await user.click(screen.getByRole('button', { name: CONNECT_BUTTON_LABEL }));
+        const sourceConnector = container.querySelector('[data-connector="source"]') as HTMLElement;
+        fireEvent.pointerDown(sourceConnector);
 
-        expect(onStartConnect).toHaveBeenCalledWith(BASE_NODE.id);
+        expect(onSourceConnectorPointerDown).toHaveBeenCalledWith(BASE_NODE.id, expect.any(Object));
     });
 
     it('calls onCompleteConnect when a non-source node is clicked in connect mode', async () => {
@@ -303,6 +308,35 @@ describe('CanvasNode', () => {
         await user.click(container.querySelector('[data-canvas-node]') as HTMLElement);
 
         expect(onCompleteConnect).toHaveBeenCalledWith(BASE_NODE.id);
+    });
+
+    it('calls onTargetConnectorPointerUp when target connector pointerup fires', () => {
+        const onTargetConnectorPointerUp = vi.fn();
+
+        vi.mocked(useNodeDrag).mockReturnValue({
+            onPointerDown: vi.fn(),
+            onPointerMove: vi.fn(),
+            onPointerUp: vi.fn(),
+            onPointerCancel: vi.fn(),
+        });
+
+        const { container } = render(
+            <CanvasNode
+                node={BASE_NODE}
+                selected={false}
+                scale={SCALE}
+                onSelect={vi.fn()}
+                onMove={vi.fn()}
+                connectMode={true}
+                isConnectSource={false}
+                onTargetConnectorPointerUp={onTargetConnectorPointerUp}
+            />,
+        );
+
+        const targetConnector = container.querySelector('[data-connector="target"]') as HTMLElement;
+        fireEvent.pointerUp(targetConnector);
+
+        expect(onTargetConnectorPointerUp).toHaveBeenCalledWith(BASE_NODE.id, expect.any(Object));
     });
 
     it('calls onBlockedConnectAttempt for blocked targets in connect mode', async () => {

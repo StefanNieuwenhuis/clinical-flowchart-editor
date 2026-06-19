@@ -1,8 +1,7 @@
 import type {FlowNode} from "../../model/types.ts";
-import type {MouseEvent, ReactNode} from "react";
+import type {MouseEvent, ReactNode, PointerEvent} from "react";
 import {nodeTypes} from "../../model/nodeTypes.ts";
 import {useNodeDrag} from "../../hooks/useNodeDrag.ts";
-import {Link2} from "lucide-react";
 
 interface CanvasNodeProps {
     node: FlowNode;
@@ -17,6 +16,11 @@ interface CanvasNodeProps {
     onCancelConnect?: () => void;
     onCompleteConnect?: (nodeId: string) => void;
     onBlockedConnectAttempt?: (nodeId: string) => void;
+    onSourceConnectorPointerDown?: (nodeId: string, event: PointerEvent<HTMLDivElement>) => void;
+    onTargetConnectorPointerUp?: (nodeId: string, event: PointerEvent<HTMLDivElement>) => void;
+    onTargetConnectorPointerEnter?: (nodeId: string) => void;
+    onTargetConnectorPointerLeave?: () => void;
+    hoveredTargetNodeId?: string | null;
 }
 
 export function CanvasNode({
@@ -32,6 +36,11 @@ export function CanvasNode({
     onCancelConnect,
     onCompleteConnect,
     onBlockedConnectAttempt,
+    onSourceConnectorPointerDown,
+    onTargetConnectorPointerUp,
+    onTargetConnectorPointerEnter,
+    onTargetConnectorPointerLeave,
+    hoveredTargetNodeId,
 }: CanvasNodeProps): ReactNode {
     const dragHandlers = useNodeDrag({
         nodeId: node.id,
@@ -43,9 +52,12 @@ export function CanvasNode({
     });
 
     const isEndNode = node.type === 'end';
-    const connectButtonLabel = isConnectSource
-        ? `Annuleer verbinding vanaf ${node.title}`
-        : `Start verbinding vanaf ${node.title}`;
+    const isStartNode = node.type === 'start';
+    const canStartConnection = !isEndNode;
+    const canAcceptConnection = !isStartNode;
+    const isHoveredTarget = hoveredTargetNodeId === node.id;
+    const sourceConnectorLabel = `Verbinding starten van ${node.title}`;
+    const targetConnectorLabel = `Verbinding voltooien bij ${node.title}`;
 
     function handleClick(event: MouseEvent<HTMLButtonElement>) {
         if (!connectMode) {
@@ -65,6 +77,18 @@ export function CanvasNode({
         }
 
         onCompleteConnect?.(node.id);
+    }
+
+    function handleSourceConnectorPointerDown(event: PointerEvent<HTMLDivElement>) {
+        event.preventDefault();
+        event.stopPropagation();
+        onSourceConnectorPointerDown?.(node.id, event);
+    }
+
+    function handleTargetConnectorPointerUp(event: PointerEvent<HTMLDivElement>) {
+        event.preventDefault();
+        event.stopPropagation();
+        onTargetConnectorPointerUp?.(node.id, event);
     }
 
     return (
@@ -114,32 +138,42 @@ export function CanvasNode({
                     ) : null}
                 </button>
 
-                {!isEndNode && (
-                    <button
-                        type="button"
+                {canStartConnection && (
+                    <div
                         data-canvas-ui
-                        aria-label={connectButtonLabel}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => {
-                            e.stopPropagation();
-
-                            if (connectMode && isConnectSource) {
-                                onCancelConnect?.();
-                                return;
-                            }
-
-                            onStartConnect?.(node.id);
-                        }}
+                        data-connector="source"
+                        onPointerDown={handleSourceConnectorPointerDown}
                         className={[
-                            "pointer-events-auto absolute -right-4 top-1/2 z-20 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border bg-white shadow-sm transition",
+                            "pointer-events-auto absolute -right-3 top-1/2 z-20 h-6 w-6 -translate-y-1/2 rounded-full border-2 transition cursor-grab active:cursor-grabbing",
                             isConnectSource
-                                ? "border-blue-600 bg-blue-50"
-                                : "border-slate-300 hover:border-blue-400 hover:bg-blue-50",
+                                ? "border-blue-600 bg-blue-50 shadow-md"
+                                : connectMode
+                                    ? "border-blue-400 bg-blue-100 shadow-sm"
+                                    : "border-slate-300 bg-white shadow-sm hover:border-blue-400 hover:bg-blue-50",
                         ].join(' ')}
-                        title={connectButtonLabel}
-                    >
-                        <Link2 className="h-3 w-3 text-slate-500" />
-                    </button>
+                        title={sourceConnectorLabel}
+                    />
+                )}
+
+                {canAcceptConnection && (
+                    <div
+                        data-canvas-ui
+                        data-connector="target"
+                        onPointerUp={handleTargetConnectorPointerUp}
+                        onPointerEnter={() => onTargetConnectorPointerEnter?.(node.id)}
+                        onPointerLeave={() => onTargetConnectorPointerLeave?.()}
+                        className={[
+                            "pointer-events-auto absolute -left-3 top-1/2 z-20 h-6 w-6 -translate-y-1/2 rounded-full border-2 transition",
+                            !connectMode
+                                ? "border-slate-300 bg-white"
+                                : isConnectTargetBlocked
+                                    ? "border-rose-300 bg-rose-50 cursor-not-allowed"
+                                    : isHoveredTarget
+                                        ? "border-emerald-600 bg-emerald-100 shadow-md ring-2 ring-emerald-200"
+                                        : "border-emerald-400 bg-emerald-50 shadow-sm",
+                        ].join(' ')}
+                        title={targetConnectorLabel}
+                    />
                 )}
             </div>
         </div>

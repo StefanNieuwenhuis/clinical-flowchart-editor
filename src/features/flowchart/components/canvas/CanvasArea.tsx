@@ -37,6 +37,9 @@ export function CanvasArea(): ReactNode {
     const [pendingSourceId, setPendingSourceId] = useState<string | null>(null);
     const [previewCursorWorld, setPreviewCursorWorld] = useState<Point | null>(null);
     const [connectFeedback, setConnectFeedback] = useState<string | null>(null);
+    const [dragSourceNodeId, setDragSourceNodeId] = useState<string | null>(null);
+    const [dragCursorWorld, setDragCursorWorld] = useState<Point | null>(null);
+    const [hoveredTargetNodeId, setHoveredTargetNodeId] = useState<string | null>(null);
 
     const pendingSourceNode = pendingSourceId
         ? nodes.find((node) => node.id === pendingSourceId) ?? null
@@ -55,6 +58,9 @@ export function CanvasArea(): ReactNode {
             setPendingSourceId(null);
             setPreviewCursorWorld(null);
             setConnectFeedback(null);
+            setDragSourceNodeId(null);
+            setDragCursorWorld(null);
+            setHoveredTargetNodeId(null);
         },
     });
 
@@ -64,6 +70,9 @@ export function CanvasArea(): ReactNode {
                 setPendingSourceId(null);
                 setPreviewCursorWorld(null);
                 setConnectFeedback(null);
+                setDragSourceNodeId(null);
+                setDragCursorWorld(null);
+                setHoveredTargetNodeId(null);
             }
         }
         window.addEventListener('keydown', handleKeyDown);
@@ -103,6 +112,23 @@ export function CanvasArea(): ReactNode {
         }
 
         return null;
+    }
+
+    function handleSourceConnectorPointerDown(sourceNodeId: string) {
+        handleStartConnect(sourceNodeId);
+    }
+
+    function handleTargetConnectorPointerUp(targetNodeId: string) {
+        handleCompleteConnect(targetNodeId);
+    }
+
+    function handleTargetConnectorPointerEnter(targetNodeId: string) {
+        // Optional: Could highlight the target visually during hover
+        // For now, this is handled by the isConnectTargetBlocked prop
+    }
+
+    function handleTargetConnectorPointerLeave() {
+        // Optional: Could remove highlighting
     }
 
     function handleStartConnect(nodeId: string) {
@@ -170,9 +196,22 @@ export function CanvasArea(): ReactNode {
         setPendingSourceId(null);
         setPreviewCursorWorld(null);
         setConnectFeedback(null);
+        setDragSourceNodeId(null);
+        setDragCursorWorld(null);
+        setHoveredTargetNodeId(null);
     }
 
     function handleCanvasPointerMoveCapture(event: React.PointerEvent<HTMLDivElement>) {
+        const worldPoint = toWorldPoint(event);
+
+        if (!worldPoint) {
+            return;
+        }
+
+        if (dragSourceNodeId) {
+            setDragCursorWorld(worldPoint);
+        }
+
         if (pendingSourceNode === null) {
             return;
         }
@@ -183,17 +222,11 @@ export function CanvasArea(): ReactNode {
             return;
         }
 
-        const worldPoint = toWorldPoint(event);
-
-        if (!worldPoint) {
-            return;
-        }
-
         setPreviewCursorWorld(worldPoint);
     }
 
     function handleCanvasPointerDownCapture(event: React.PointerEvent<HTMLDivElement>) {
-        if (pendingSourceId === null) {
+        if (pendingSourceId === null && dragSourceNodeId === null) {
             return;
         }
 
@@ -211,6 +244,9 @@ export function CanvasArea(): ReactNode {
         setPendingSourceId(null);
         setPreviewCursorWorld(null);
         setConnectFeedback(null);
+        setDragSourceNodeId(null);
+        setDragCursorWorld(null);
+        setHoveredTargetNodeId(null);
     }
 
     useEffect(() => {
@@ -293,6 +329,44 @@ export function CanvasArea(): ReactNode {
         })()
         : null;
 
+    const dragSourceNode = dragSourceNodeId
+        ? nodes.find((node) => node.id === dragSourceNodeId) ?? null
+        : null;
+
+    const dragPreviewEdge = dragSourceNode && dragCursorWorld
+        ? (() => {
+            const start = {
+                x: dragSourceNode.x + NODE_WIDTH,
+                y: dragSourceNode.y + NODE_HEIGHT / 2,
+            };
+
+            const end = dragCursorWorld;
+
+            const left = Math.min(start.x, end.x) - PREVIEW_PADDING;
+            const top = Math.min(start.y, end.y) - PREVIEW_PADDING;
+            const right = Math.max(start.x, end.x) + PREVIEW_PADDING;
+            const bottom = Math.max(start.y, end.y) + PREVIEW_PADDING;
+
+            const width = right - left;
+            const height = bottom - top;
+
+            const startX = start.x - left;
+            const startY = start.y - top;
+            const endX = end.x - left;
+            const endY = end.y - top;
+
+            const controlOffset = Math.max(PREVIEW_PADDING, Math.abs(endX - startX) / 2);
+
+            return {
+                left,
+                top,
+                width,
+                height,
+                d: `M ${startX} ${startY} C ${startX + controlOffset} ${startY}, ${endX - controlOffset} ${endY}, ${endX} ${endY}`,
+            };
+        })()
+        : null;
+
     return (
         <div
             ref={canvasRef}
@@ -301,7 +375,7 @@ export function CanvasArea(): ReactNode {
             onPointerDownCapture={handleCanvasPointerDownCapture}
             className={[
                 'relative h-full w-full overflow-hidden bg-slate-50',
-                pendingSourceId === null ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
+                dragSourceNodeId !== null ? 'cursor-crosshair' : pendingSourceId === null ? 'cursor-grab active:cursor-grabbing' : 'cursor-default',
             ].join(' ')}
         >
             <ViewportControls
@@ -311,13 +385,13 @@ export function CanvasArea(): ReactNode {
                 onReset={resetViewport} onFit={handleFitToScreen}
             />
 
-            {pendingSourceNode && (
+            {(pendingSourceNode || dragSourceNode) && (
                 <div
                     data-canvas-ui
                     className="pointer-events-auto absolute left-1/2 top-4 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-slate-200 bg-white/95 px-3 py-2 text-xs text-slate-700 shadow-sm"
                 >
                     <span className="font-medium">
-                        Verbinding maken vanaf: {pendingSourceNode.title}
+                        Verbinding maken vanaf: {(pendingSourceNode || dragSourceNode)?.title}
                     </span>
 
                     {connectFeedback && (
@@ -367,11 +441,38 @@ export function CanvasArea(): ReactNode {
                     </svg>
                 )}
 
+                {dragPreviewEdge && (
+                    <svg
+                        className="pointer-events-none absolute z-[5] overflow-visible"
+                        style={{
+                            left: dragPreviewEdge.left,
+                            top: dragPreviewEdge.top,
+                            width: dragPreviewEdge.width,
+                            height: dragPreviewEdge.height,
+                        }}
+                        viewBox={`0 0 ${dragPreviewEdge.width} ${dragPreviewEdge.height}`}
+                    >
+                        <path
+                            data-drag-preview-edge
+                            d={dragPreviewEdge.d}
+                            fill="none"
+                            strokeWidth="2"
+                            strokeDasharray={PREVIEW_DASH}
+                            className="stroke-emerald-400"
+                        />
+                    </svg>
+                )}
+
                 {
                     nodes.map((node: FlowNode) => {
-                        const isConnectSource = node.id === pendingSourceId;
-                        const blockedReason = pendingSourceNode && !isConnectSource
-                            ? getConnectionBlockReason(pendingSourceNode, node)
+                        const isClickConnectSource = node.id === pendingSourceId;
+                        const isDragSource = node.id === dragSourceNodeId;
+                        const isConnectSource = isClickConnectSource || isDragSource;
+                        const isInConnectMode = pendingSourceId !== null || dragSourceNodeId !== null;
+
+                        const sourceNodeForBlockCheck = pendingSourceNode || dragSourceNode;
+                        const blockedReason = sourceNodeForBlockCheck && !isConnectSource
+                            ? getConnectionBlockReason(sourceNodeForBlockCheck, node)
                             : null;
 
                         return (
@@ -380,15 +481,20 @@ export function CanvasArea(): ReactNode {
                                 node={node}
                                 scale={viewport.scale}
                                 selected={node.id === selectedNodeId}
-                                onSelect={pendingSourceId !== null ? () => {} : selectNode}
+                                onSelect={isInConnectMode ? () => {} : selectNode}
                                 onMove={moveNode}
-                                connectMode={pendingSourceId !== null}
+                                connectMode={isInConnectMode}
                                 isConnectSource={isConnectSource}
                                 isConnectTargetBlocked={Boolean(blockedReason)}
                                 onStartConnect={handleStartConnect}
                                 onCompleteConnect={handleCompleteConnect}
                                 onBlockedConnectAttempt={handleBlockedConnectAttempt}
                                 onCancelConnect={handleCancelConnect}
+                                onSourceConnectorPointerDown={handleSourceConnectorPointerDown}
+                                onTargetConnectorPointerUp={handleTargetConnectorPointerUp}
+                                onTargetConnectorPointerEnter={handleTargetConnectorPointerEnter}
+                                onTargetConnectorPointerLeave={handleTargetConnectorPointerLeave}
+                                hoveredTargetNodeId={hoveredTargetNodeId}
                             />
                         );
                     })

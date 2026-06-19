@@ -117,8 +117,8 @@ describe('CanvasArea', () => {
 
         const { container } = render(<CanvasArea />);
 
-        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
-        await user.click(portButtons[0]);
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        fireEvent.pointerDown(sourceConnectors[0] as HTMLElement);
 
         const previewEdge = container.querySelector('[data-preview-edge]') as SVGPathElement;
         expect(previewEdge).toBeTruthy();
@@ -143,16 +143,17 @@ describe('CanvasArea', () => {
 
         const { container } = render(<CanvasArea />);
 
-        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        const targetConnectors = container.querySelectorAll('[data-connector="target"]');
 
-        // emergency -> q_color is a valid non-duplicate connection
-        await user.click(portButtons[2]);
+        // emergency (nodes[2]) -> q_color (nodes[1])
+        // emergency is sourceConnectors[2], q_color is targetConnectors[0]
+        fireEvent.pointerDown(sourceConnectors[2] as HTMLElement);
 
         expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
         expect(container.querySelector('[data-preview-edge]')).toBeTruthy();
 
-        const canvasNodeButtons = container.querySelectorAll('[data-canvas-node]');
-        await user.click(canvasNodeButtons[1] as HTMLElement);
+        fireEvent.pointerUp(targetConnectors[0] as HTMLElement);
 
         expect(connectNodesSpy).toHaveBeenCalledTimes(1);
         expect(connectNodesSpy).toHaveBeenCalledWith(
@@ -171,13 +172,14 @@ describe('CanvasArea', () => {
 
         const { container } = render(<CanvasArea />);
 
-        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        const targetConnectors = container.querySelectorAll('[data-connector="target"]');
 
-        // emergency -> q_leakage should be valid even though q_leakage already has other edges
-        await user.click(portButtons[2]);
+        // emergency (nodes[2]) -> q_leakage (nodes[3])
+        // emergency is sourceConnectors[2], q_leakage is targetConnectors[2]
+        fireEvent.pointerDown(sourceConnectors[2] as HTMLElement);
 
-        const canvasNodeButtons = container.querySelectorAll('[data-canvas-node]');
-        await user.click(canvasNodeButtons[3] as HTMLElement);
+        fireEvent.pointerUp(targetConnectors[2] as HTMLElement);
 
         expect(connectNodesSpy).toHaveBeenCalledTimes(1);
         expect(connectNodesSpy).toHaveBeenCalledWith(
@@ -195,17 +197,18 @@ describe('CanvasArea', () => {
 
         const { container } = render(<CanvasArea />);
 
-        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        const targetConnectors = container.querySelectorAll('[data-connector="target"]');
 
-        // q_color -> start is disallowed
-        await user.click(portButtons[1]);
+        // q_color (nodes[1]) -> q_leakage (nodes[3]) is a duplicate connection (already exists as edge e3)
+        // q_color is sourceConnectors[1], q_leakage is targetConnectors[2]
+        fireEvent.pointerDown(sourceConnectors[1] as HTMLElement);
 
-        const canvasNodeButtons = container.querySelectorAll('[data-canvas-node]');
-        await user.click(canvasNodeButtons[0] as HTMLElement);
+        fireEvent.pointerUp(targetConnectors[2] as HTMLElement);
 
         expect(connectNodesSpy).not.toHaveBeenCalled();
         expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
-        expect(screen.getByRole('status')).toHaveTextContent(TARGET_START_FEEDBACK);
+        expect(screen.getByRole('status')).toHaveTextContent(/deze verbinding bestaat al/i);
         expect(container.querySelector('[data-preview-edge]')).toBeTruthy();
     });
 
@@ -214,8 +217,8 @@ describe('CanvasArea', () => {
 
         const { container } = render(<CanvasArea />);
 
-        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
-        await user.click(portButtons[0]);
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        fireEvent.pointerDown(sourceConnectors[0] as HTMLElement);
 
         expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
 
@@ -231,8 +234,8 @@ describe('CanvasArea', () => {
 
         const { container } = render(<CanvasArea />);
 
-        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
-        await user.click(portButtons[0]);
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        fireEvent.pointerDown(sourceConnectors[0] as HTMLElement);
 
         expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
 
@@ -247,8 +250,8 @@ describe('CanvasArea', () => {
 
         const { container } = render(<CanvasArea />);
 
-        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
-        await user.click(portButtons[0]);
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        fireEvent.pointerDown(sourceConnectors[0] as HTMLElement);
 
         expect(screen.getByText(CONNECT_MODE_HINT)).toBeInTheDocument();
 
@@ -263,8 +266,8 @@ describe('CanvasArea', () => {
 
         const { container } = render(<CanvasArea />);
 
-        const portButtons = screen.getAllByRole('button', { name: /verbind/i });
-        await user.click(portButtons[0]);
+        const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
+        fireEvent.pointerDown(sourceConnectors[0] as HTMLElement);
 
         await user.click(screen.getByText('Annuleer (Esc)'));
 
