@@ -175,7 +175,7 @@ export function EdgeLayer({
                                 fill="none"
                                 strokeWidth="10"
                                 strokeLinecap="round"
-                                className="stroke-sky-300/60"
+                                className="stroke-sky-300/60 pointer-events-none"
                                 style={needsLabel ? { strokeDasharray: "4,4" } : undefined}
                             />
                         )}
