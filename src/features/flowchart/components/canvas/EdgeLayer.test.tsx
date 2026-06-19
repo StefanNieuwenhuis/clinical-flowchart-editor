@@ -2,7 +2,8 @@
 import '@testing-library/jest-dom/vitest';
 
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EdgeLayer } from './EdgeLayer';
 import type { FlowEdge, FlowNode } from '../../model/types';
 
@@ -39,7 +40,7 @@ describe('EdgeLayer', () => {
             { id: 'e1', from: 'start', to: 'end', label: 'Ja' },
         ];
 
-        const { container } = render(<EdgeLayer nodes={nodes} edges={edges} />);
+        const { container } = render(<EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={undefined} />);
 
         const edgePaths = container.querySelectorAll('path[marker-end="url(#edge-arrow)"]');
 
@@ -51,7 +52,7 @@ describe('EdgeLayer', () => {
             { id: 'e-missing', from: 'start', to: 'missing-node', label: 'Nee' },
         ];
 
-        const { container } = render(<EdgeLayer nodes={nodes} edges={edges} />);
+        const { container } = render(<EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={undefined} />);
 
         const edgePaths = container.querySelectorAll('path[marker-end="url(#edge-arrow)"]');
 
@@ -66,7 +67,7 @@ describe('EdgeLayer', () => {
             { id: 'e-tab', from: 'start', to: 'end', label: asUnsafeRouteLabel('\t') },
         ];
 
-        const { container } = render(<EdgeLayer nodes={nodes} edges={edges} />);
+        const { container } = render(<EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={undefined} />);
 
         const edgePaths = container.querySelectorAll('path[marker-end="url(#edge-arrow)"]');
 
@@ -79,8 +80,70 @@ describe('EdgeLayer', () => {
             { id: 'e-normal', from: 'start', to: 'end', label: 'Ja' },
         ];
 
-        render(<EdgeLayer nodes={nodes} edges={edges} />);
+        render(<EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={undefined} />);
 
         expect(screen.getByText('Ja')).toBeInTheDocument();
+    });
+
+    it('shows dashed stroke for unlabeled non-start edges', () => {
+        const nodes2: FlowNode[] = [
+            {
+                id: 'start',
+                type: 'start',
+                title: 'Start',
+                body: '',
+                x: 100,
+                y: 100,
+            },
+            {
+                id: 'question',
+                type: 'question',
+                title: 'Question',
+                body: '',
+                x: 400,
+                y: 100,
+            },
+            {
+                id: 'end',
+                type: 'end',
+                title: 'End',
+                body: '',
+                x: 700,
+                y: 100,
+            },
+        ];
+        const edges: FlowEdge[] = [
+            { id: 'e1', from: 'start', to: 'question', label: '' },
+            { id: 'e2', from: 'question', to: 'end', label: '' },
+        ];
+
+        const { container } = render(<EdgeLayer nodes={nodes2} edges={edges} onEdgeLabelClick={undefined} />);
+
+        const paths = container.querySelectorAll('path[marker-end="url(#edge-arrow)"]');
+        
+        expect(paths).toHaveLength(2);
+        
+        const dashedPath = paths[1];
+        expect(dashedPath).toHaveStyle('strokeDasharray: 4,4');
+    });
+
+    it('calls onEdgeLabelClick when edge label is clicked', async () => {
+        const user = userEvent.setup();
+        const onEdgeLabelClick = vi.fn();
+        const edges: FlowEdge[] = [
+            { id: 'e1', from: 'start', to: 'end', label: 'Ja' },
+        ];
+
+        render(
+            <EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={onEdgeLabelClick} />
+        );
+
+        const labelText = screen.getByText('Ja');
+        const labelGroup = labelText.closest('g');
+        
+        if (labelGroup) {
+            await user.click(labelGroup);
+            expect(onEdgeLabelClick).toHaveBeenCalledWith('e1', expect.any(Number), expect.any(Number));
+        }
     });
 });
