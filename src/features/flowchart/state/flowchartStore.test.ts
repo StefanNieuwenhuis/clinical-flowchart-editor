@@ -390,4 +390,98 @@ describe('FlowchartStore', () => {
         expect(updatedEdge?.label).toBe('Nee');
     });
 
+    it('should initialise with isDirty false', () => {
+        expect(useFlowchartStore.getState().isDirty).toBe(false);
+    });
+
+    it('should set isDirty to true when a node is added', () => {
+        useFlowchartStore.getState().addNodeOfTypeAt('process', { x: 100, y: 100 });
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should set isDirty to true when a node is deleted', () => {
+        const nodeId = useFlowchartStore.getState().document.nodes[0].id;
+
+        useFlowchartStore.getState().deleteNode(nodeId);
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should set isDirty to true when a node is updated', () => {
+        useFlowchartStore.getState().updateNode('start', { title: 'Gewijzigde titel' });
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should set isDirty to true when a node is moved', () => {
+        useFlowchartStore.getState().moveNode('start', { x: 50, y: 50 });
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should set isDirty to true when nodes are connected', () => {
+        const sourceId = useFlowchartStore.getState().document.nodes.find((n) => n.id === 'start')?.id;
+        const targetId = useFlowchartStore.getState().document.nodes.find((n) => n.id === 'q_leakage')?.id;
+
+        expect(sourceId).toBeTruthy();
+        expect(targetId).toBeTruthy();
+
+        useFlowchartStore.getState().connectNodes(sourceId!, targetId!);
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should set isDirty to true when an edge is updated', () => {
+        const edgeId = useFlowchartStore.getState().document.edges[1].id;
+
+        useFlowchartStore.getState().updateEdge(edgeId, { label: 'Ja' });
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should set isDirty to true when an edge is deleted', () => {
+        const edgeId = useFlowchartStore.getState().document.edges[0].id;
+
+        useFlowchartStore.getState().deleteEdge(edgeId);
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+    });
+
+    it('should reset isDirty to false after save', () => {
+        useFlowchartStore.getState().updateNode('start', { title: 'Gewijzigde titel' });
+
+        expect(useFlowchartStore.getState().isDirty).toBe(true);
+
+        useFlowchartStore.getState().saveDocument();
+
+        expect(useFlowchartStore.getState().isDirty).toBe(false);
+    });
+
+    it('should not set isDirty when selecting a node', () => {
+        useFlowchartStore.getState().selectNode('start');
+
+        expect(useFlowchartStore.getState().isDirty).toBe(false);
+    });
+
+    it('should not set isDirty when selecting an edge', () => {
+        const edgeId = useFlowchartStore.getState().document.edges[0].id;
+
+        useFlowchartStore.getState().selectEdge(edgeId);
+
+        expect(useFlowchartStore.getState().isDirty).toBe(false);
+    });
+
+    it('should not set isDirty when clearing selection', () => {
+        useFlowchartStore.getState().clearSelection();
+
+        expect(useFlowchartStore.getState().isDirty).toBe(false);
+    });
+
+    it('should not set isDirty when setting viewport', () => {
+        useFlowchartStore.getState().setViewport({ x: 10, y: 20, scale: 1.5 });
+
+        expect(useFlowchartStore.getState().isDirty).toBe(false);
+    });
+
 });
