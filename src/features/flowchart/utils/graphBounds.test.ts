@@ -20,7 +20,7 @@ describe('graphBounds', () => {
         const nodes: FlowNode[] = [
             {
                 id: 'node-1',
-                type: 'question',
+                type: 'decision',
                 title: 'Question',
                 body: '',
                 x: 100,
@@ -41,7 +41,7 @@ describe('graphBounds', () => {
         const nodes: FlowNode[] = [
             {
                 id: 'node-1',
-                type: 'question',
+                type: 'decision',
                 title: 'Question 1',
                 body: '',
                 x: 100,
@@ -49,7 +49,7 @@ describe('graphBounds', () => {
             },
             {
                 id: 'node-2',
-                type: 'consult_nurse',
+                type: 'process',
                 title: 'Consult Nurse',
                 body: '',
                 x: 500,
