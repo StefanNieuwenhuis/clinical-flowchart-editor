@@ -4,7 +4,7 @@ import type {FlowEdge, FlowNode, NodeType, Noop, ViewportState} from "../../mode
 import {EdgeLayer} from "./EdgeLayer.tsx";
 import {CanvasNode} from "./CanvasNode.tsx";
 import {useCanvasPanZoom} from "../../hooks/useCanvasPanZoom.ts";
-import {getGraphBounds, NODE_HEIGHT, NODE_WIDTH} from "../../utils/graphBounds.ts";
+import {getGraphBounds, NODE_HEIGHT} from "../../utils/graphBounds.ts";
 import {ViewportControls} from "./ViewportControls.tsx";
 import {useCanvasCommandStore} from "../../state/canvasCommandStore.ts";
 import {getViewportCenterInWorld} from "../../utils/viewportMath.ts";
@@ -67,17 +67,27 @@ export function CanvasArea(): ReactNode {
         },
     });
 
-    useEffect(() => {
-        const heights = new Map<string, number>();
+    function handleNodeRef(nodeId: string, element: HTMLDivElement | null) {
+        if (element) {
+            nodeRefs.current.set(nodeId, element);
 
-        nodeRefs.current.forEach((element, nodeId) => {
-            if (element) {
-                heights.set(nodeId, element.offsetHeight);
-            }
-        });
+            const nextHeight = element.offsetHeight;
 
-        setNodeHeights(heights);
-    }, [nodes]);
+            setNodeHeights((currentHeights) => {
+                if (currentHeights.get(nodeId) === nextHeight) {
+                    return currentHeights;
+                }
+
+                const nextHeights = new Map(currentHeights);
+                nextHeights.set(nodeId, nextHeight);
+                return nextHeights;
+            });
+
+            return;
+        }
+
+        nodeRefs.current.delete(nodeId);
+    }
 
     useEffect(() => {
         function handleKeyDown(event: KeyboardEvent) {
@@ -137,7 +147,7 @@ export function CanvasArea(): ReactNode {
         handleCompleteConnect(targetNodeId);
     }
 
-    function handleTargetConnectorPointerEnter(targetNodeId: string) {
+    function handleTargetConnectorPointerEnter() {
         // Optional: Could highlight the target visually during hover
         // For now, this is handled by the isConnectTargetBlocked prop
     }
@@ -493,13 +503,7 @@ export function CanvasArea(): ReactNode {
                             <CanvasNode
                                 key={node.id}
                                 node={node}
-                                nodeRef={(element) => {
-                                    if (element) {
-                                        nodeRefs.current.set(node.id, element);
-                                    } else {
-                                        nodeRefs.current.delete(node.id);
-                                    }
-                                }}
+                                nodeRef={(element) => handleNodeRef(node.id, element)}
                                 scale={viewport.scale}
                                 selected={node.id === selectedNodeId}
                                 onSelect={isInConnectMode ? () => {} : selectNode}
@@ -507,7 +511,6 @@ export function CanvasArea(): ReactNode {
                                 connectMode={isInConnectMode}
                                 isConnectSource={isConnectSource}
                                 isConnectTargetBlocked={Boolean(blockedReason)}
-                                onStartConnect={handleStartConnect}
                                 onCompleteConnect={handleCompleteConnect}
                                 onBlockedConnectAttempt={handleBlockedConnectAttempt}
                                 onCancelConnect={handleCancelConnect}

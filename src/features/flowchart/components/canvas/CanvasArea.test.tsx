@@ -11,7 +11,6 @@ import { getGraphBounds } from '../../utils/graphBounds';
 import { initialFlowchart } from '../../model/initialFlowchart';
 
 const CONNECT_MODE_HINT = /verbinding maken vanaf/i;
-const TARGET_START_FEEDBACK = /niet verbinden naar een startknoop/i;
 
 describe('CanvasArea', () => {
     beforeEach(() => {
@@ -112,9 +111,7 @@ describe('CanvasArea', () => {
         expect(viewport.scale).toBeLessThanOrEqual(1);
     });
 
-    it('shows a dotted preview edge during connect mode and updates it with mouse movement', async () => {
-        const user = userEvent.setup();
-
+    it('shows a dotted preview edge during connect mode and updates it with mouse movement', () => {
         const { container } = render(<CanvasArea />);
 
         const sourceConnectors = container.querySelectorAll('[data-connector="source"]');
@@ -135,8 +132,7 @@ describe('CanvasArea', () => {
         expect(pathAfter).not.toBe(pathBefore);
     });
 
-    it('completes a connection when a valid source-target pair is clicked', async () => {
-        const user = userEvent.setup();
+    it('completes a connection when a valid source-target pair is clicked', () => {
         const connectNodesSpy = vi.fn();
 
         useFlowchartStore.setState({ connectNodes: connectNodesSpy });
@@ -164,8 +160,7 @@ describe('CanvasArea', () => {
         expect(container.querySelector('[data-preview-edge]')).toBeNull();
     });
 
-    it('allows connecting to a target node that already has other connections', async () => {
-        const user = userEvent.setup();
+    it('allows connecting to a target node that already has other connections', () => {
         const connectNodesSpy = vi.fn();
 
         useFlowchartStore.setState({ connectNodes: connectNodesSpy });
@@ -189,8 +184,7 @@ describe('CanvasArea', () => {
         expect(screen.queryByText(CONNECT_MODE_HINT)).not.toBeInTheDocument();
     });
 
-    it('keeps connect mode active and shows feedback when target is invalid', async () => {
-        const user = userEvent.setup();
+    it('keeps connect mode active and shows feedback when target is invalid', () => {
         const connectNodesSpy = vi.fn();
 
         useFlowchartStore.setState({ connectNodes: connectNodesSpy });
@@ -245,9 +239,7 @@ describe('CanvasArea', () => {
         expect(container.querySelector('[data-preview-edge]')).toBeNull();
     });
 
-    it('cancels connect mode when the canvas background is clicked', async () => {
-        const user = userEvent.setup();
-
+    it('cancels connect mode when the canvas background is clicked', () => {
         const { container } = render(<CanvasArea />);
 
         const sourceConnectors = container.querySelectorAll('[data-connector="source"]');

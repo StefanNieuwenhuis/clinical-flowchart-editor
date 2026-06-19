@@ -12,7 +12,6 @@ interface CanvasNodeProps {
     connectMode?: boolean;
     isConnectSource?: boolean;
     isConnectTargetBlocked?: boolean;
-    onStartConnect?: (nodeId: string) => void;
     onCancelConnect?: () => void;
     onCompleteConnect?: (nodeId: string) => void;
     onBlockedConnectAttempt?: (nodeId: string) => void;
@@ -33,7 +32,6 @@ export function CanvasNode({
     connectMode = false,
     isConnectSource = false,
     isConnectTargetBlocked = false,
-    onStartConnect,
     onCancelConnect,
     onCompleteConnect,
     onBlockedConnectAttempt,

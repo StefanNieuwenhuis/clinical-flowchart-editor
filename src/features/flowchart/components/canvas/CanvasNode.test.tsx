@@ -33,8 +33,6 @@ const END_NODE: FlowNode = {
     title: 'Einde',
 };
 
-const CONNECT_BUTTON_LABEL = /verbind/i;
-
 describe('CanvasNode', () => {
     afterEach(() => {
         cleanup();
