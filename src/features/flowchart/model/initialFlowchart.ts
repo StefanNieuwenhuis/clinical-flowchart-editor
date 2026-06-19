@@ -5,6 +5,7 @@ export const initialFlowchart: FlowchartDocument = {
     version: "0.1.0",
     status: "Concept",
     selectedNodeId: "q_color",
+    selectedEdgeId: null,
     viewport: {
         x: 0,
         y: 0,

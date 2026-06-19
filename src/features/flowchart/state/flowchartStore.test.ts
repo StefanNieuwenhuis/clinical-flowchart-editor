@@ -254,6 +254,51 @@ describe('FlowchartStore', () => {
         expect(stateAfter.selectedNodeId).toBeNull();
     });
 
+    it('should delete only the selected edge and keep connected nodes', () => {
+        const stateBefore = useFlowchartStore.getState().document;
+        const edgeToDelete = stateBefore.edges[0];
+
+        expect(edgeToDelete).toBeTruthy();
+
+        useFlowchartStore.getState().selectEdge(edgeToDelete.id);
+        useFlowchartStore.getState().deleteEdge(edgeToDelete.id);
+
+        const stateAfter = useFlowchartStore.getState().document;
+        const deletedEdge = stateAfter.edges.find((edge) => edge.id === edgeToDelete.id);
+        const fromNode = stateAfter.nodes.find((node) => node.id === edgeToDelete.from);
+        const toNode = stateAfter.nodes.find((node) => node.id === edgeToDelete.to);
+
+        expect(deletedEdge).toBeUndefined();
+        expect(fromNode).toBeTruthy();
+        expect(toNode).toBeTruthy();
+        expect(stateAfter.edges).toHaveLength(stateBefore.edges.length - EDGE_COUNT_INCREMENT);
+        expect(stateAfter.selectedEdgeId).toBeNull();
+    });
+
+    it('should clear selected edge when selecting a node', () => {
+        const edgeId = useFlowchartStore.getState().document.edges[0].id;
+
+        useFlowchartStore.getState().selectEdge(edgeId);
+        useFlowchartStore.getState().selectNode('start');
+
+        const stateAfter = useFlowchartStore.getState().document;
+
+        expect(stateAfter.selectedNodeId).toBe('start');
+        expect(stateAfter.selectedEdgeId).toBeNull();
+    });
+
+    it('should clear selected node when selecting an edge', () => {
+        const edgeId = useFlowchartStore.getState().document.edges[0].id;
+
+        useFlowchartStore.getState().selectNode('start');
+        useFlowchartStore.getState().selectEdge(edgeId);
+
+        const stateAfter = useFlowchartStore.getState().document;
+
+        expect(stateAfter.selectedNodeId).toBeNull();
+        expect(stateAfter.selectedEdgeId).toBe(edgeId);
+    });
+
     it('should not change state when deleting a non-existing node', () => {
         const stateBefore = useFlowchartStore.getState().document;
 

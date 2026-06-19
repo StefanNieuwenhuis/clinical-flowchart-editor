@@ -40,7 +40,7 @@ describe('EdgeLayer', () => {
             { id: 'e1', from: 'start', to: 'end', label: 'Ja' },
         ];
 
-        const { container } = render(<EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={undefined} />);
+        const { container } = render(<EdgeLayer nodes={nodes} edges={edges} />);
 
         const edgePaths = container.querySelectorAll('path[marker-end]');
 
@@ -52,7 +52,7 @@ describe('EdgeLayer', () => {
             { id: 'e-missing', from: 'start', to: 'missing-node', label: 'Nee' },
         ];
 
-        const { container } = render(<EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={undefined} />);
+        const { container } = render(<EdgeLayer nodes={nodes} edges={edges} />);
 
         const edgePaths = container.querySelectorAll('path[marker-end]');
 
@@ -61,18 +61,57 @@ describe('EdgeLayer', () => {
     });
 
     it('does not render labels for empty or whitespace-only labels', () => {
-        const edges: FlowEdge[] = [
-            { id: 'e-empty', from: 'start', to: 'end', label: '' },
-            { id: 'e-space', from: 'start', to: 'end', label: asUnsafeRouteLabel(' ') },
-            { id: 'e-tab', from: 'start', to: 'end', label: asUnsafeRouteLabel('\t') },
+        const nodes2: FlowNode[] = [
+            {
+                id: 'start',
+                type: 'start',
+                title: 'Start',
+                body: '',
+                x: 100,
+                y: 100,
+            },
+            {
+                id: 'decision',
+                type: 'decision',
+                title: 'Vraag',
+                body: '',
+                x: 400,
+                y: 100,
+            },
+            {
+                id: 'end',
+                type: 'end',
+                title: 'End',
+                body: '',
+                x: 700,
+                y: 100,
+            },
         ];
 
-        const { container } = render(<EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={undefined} />);
+        const edges: FlowEdge[] = [
+            { id: 'e-empty', from: 'start', to: 'decision', label: '' },
+            { id: 'e-space', from: 'start', to: 'decision', label: asUnsafeRouteLabel(' ') },
+            { id: 'e-tab', from: 'decision', to: 'end', label: asUnsafeRouteLabel('\t') },
+        ];
+
+        const { container } = render(<EdgeLayer nodes={nodes2} edges={edges} />);
 
         const edgePaths = container.querySelectorAll('path[marker-end]');
 
-        expect(edgePaths).toHaveLength(3);
+        expect(edgePaths).toHaveLength(edges.length);
         expect(container.querySelectorAll('foreignObject')).toHaveLength(0);
+    });
+
+    it('uses pointer cursor on the edge interaction path', () => {
+        const edges: FlowEdge[] = [
+            { id: 'e1', from: 'start', to: 'end', label: '' },
+        ];
+
+        const { container } = render(<EdgeLayer nodes={nodes} edges={edges} />);
+
+        const interactionPath = container.querySelector('[data-edge-id="e1"]');
+
+        expect(interactionPath).toHaveStyle('cursor: pointer');
     });
 
     it('renders labels for non-empty trimmed label values', () => {
@@ -80,7 +119,7 @@ describe('EdgeLayer', () => {
             { id: 'e-normal', from: 'start', to: 'end', label: 'Ja' },
         ];
 
-        render(<EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={undefined} />);
+        render(<EdgeLayer nodes={nodes} edges={edges} />);
 
         expect(screen.getByText('Ja')).toBeInTheDocument();
     });
@@ -117,7 +156,7 @@ describe('EdgeLayer', () => {
             { id: 'e2', from: 'decision', to: 'end', label: '' },
         ];
 
-        const { container } = render(<EdgeLayer nodes={nodes2} edges={edges} onEdgeLabelClick={undefined} />);
+        const { container } = render(<EdgeLayer nodes={nodes2} edges={edges} />);
 
         const paths = container.querySelectorAll('path[marker-end]');
         
@@ -127,15 +166,15 @@ describe('EdgeLayer', () => {
         expect(dashedPath).toHaveStyle('strokeDasharray: 4,4');
     });
 
-    it('calls onEdgeLabelClick when edge label is clicked', async () => {
+    it('selects edge when edge label is clicked', async () => {
         const user = userEvent.setup();
-        const onEdgeLabelClick = vi.fn();
+        const onEdgeSelect = vi.fn();
         const edges: FlowEdge[] = [
             { id: 'e1', from: 'start', to: 'end', label: 'Ja' },
         ];
 
         render(
-            <EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={onEdgeLabelClick} />
+            <EdgeLayer nodes={nodes} edges={edges} onEdgeSelect={onEdgeSelect} />
         );
 
         const labelText = screen.getByText('Ja');
@@ -143,8 +182,52 @@ describe('EdgeLayer', () => {
         
         if (labelGroup) {
             await user.click(labelGroup);
-            expect(onEdgeLabelClick).toHaveBeenCalledWith('e1', expect.any(Number), expect.any(Number));
+            expect(onEdgeSelect).toHaveBeenCalledWith('e1');
         }
+    });
+
+    it('calls onEdgeSelect when the edge path is clicked', async () => {
+        const user = userEvent.setup();
+        const onEdgeSelect = vi.fn();
+        const edges: FlowEdge[] = [
+            { id: 'e1', from: 'start', to: 'end', label: '' },
+        ];
+
+        const { container } = render(
+            <EdgeLayer
+                nodes={nodes}
+                edges={edges}
+                onEdgeSelect={onEdgeSelect}
+            />,
+        );
+
+        const edgePath = container.querySelector('[data-edge-id="e1"]');
+
+        expect(edgePath).toBeTruthy();
+
+        await user.click(edgePath as Element);
+
+        expect(onEdgeSelect).toHaveBeenCalledTimes(1);
+        expect(onEdgeSelect).toHaveBeenCalledWith('e1');
+    });
+
+    it('renders a halo for the selected edge', () => {
+        const edges: FlowEdge[] = [
+            { id: 'e1', from: 'start', to: 'end', label: 'Ja' },
+            { id: 'e2', from: 'start', to: 'end', label: 'Nee' },
+        ];
+
+        const { container } = render(
+            <EdgeLayer
+                nodes={nodes}
+                edges={edges}
+                selectedEdgeId="e2"
+            />,
+        );
+
+        const halos = container.querySelectorAll('[data-selected-edge-halo]');
+
+        expect(halos).toHaveLength(1);
     });
 
     it('applies semantic colors for Ja and Nee edges', () => {
@@ -154,7 +237,7 @@ describe('EdgeLayer', () => {
         ];
 
         const { container } = render(
-            <EdgeLayer nodes={nodes} edges={edges} onEdgeLabelClick={undefined} />,
+            <EdgeLayer nodes={nodes} edges={edges} />,
         );
 
         const edgePaths = container.querySelectorAll('path[marker-end]');

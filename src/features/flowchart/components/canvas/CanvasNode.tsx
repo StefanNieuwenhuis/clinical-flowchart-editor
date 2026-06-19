@@ -160,7 +160,7 @@ export function CanvasNode({
                                     ? "border-rose-300 cursor-not-allowed hover:border-rose-400 hover:ring-2 hover:ring-rose-100"
                                     : "border-slate-300 cursor-pointer hover:border-emerald-500 hover:ring-2 hover:ring-emerald-100"
                                 : selected
-                                    ? "border-blue-500 ring-2 ring-blue-100"
+                                    ? "border-blue-600 ring-4 ring-blue-100 shadow-md"
                                     : "border-slate-200 hover:border-slate-300 hover:shadow-md",
                     ].join(" ")}
                 >

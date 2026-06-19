@@ -339,6 +339,65 @@ describe('CanvasArea', () => {
         expect(deletedNode).toBeUndefined();
     });
 
+    it('selects an edge when the edge path is clicked', () => {
+        const edgeId = useFlowchartStore.getState().document.edges[0].id;
+
+        const { container } = render(<CanvasArea />);
+
+        const edgePath = container.querySelector(`[data-edge-id="${edgeId}"]`);
+
+        expect(edgePath).toBeTruthy();
+
+        fireEvent.click(edgePath as Element);
+
+        const stateAfter = useFlowchartStore.getState().document;
+
+        expect(stateAfter.selectedEdgeId).toBe(edgeId);
+        expect(stateAfter.selectedNodeId).toBeNull();
+    });
+
+    it('deletes the selected edge with Delete and keeps connected nodes', async () => {
+        const user = userEvent.setup();
+        const stateBefore = useFlowchartStore.getState().document;
+        const edgeToDelete = stateBefore.edges[0];
+        const matchingEdgesBefore = stateBefore.edges.filter((edge) => edge.id === edgeToDelete.id);
+
+        expect(edgeToDelete).toBeTruthy();
+
+        useFlowchartStore.getState().selectEdge(edgeToDelete.id);
+
+        render(<CanvasArea />);
+
+        await user.keyboard('{Delete}');
+
+        const stateAfter = useFlowchartStore.getState().document;
+        const deletedEdge = stateAfter.edges.find((edge) => edge.id === edgeToDelete.id);
+        const fromNode = stateAfter.nodes.find((node) => node.id === edgeToDelete.from);
+        const toNode = stateAfter.nodes.find((node) => node.id === edgeToDelete.to);
+
+        expect(deletedEdge).toBeUndefined();
+        expect(fromNode).toBeTruthy();
+        expect(toNode).toBeTruthy();
+        expect(stateAfter.edges).toHaveLength(stateBefore.edges.length - matchingEdgesBefore.length);
+    });
+
+    it('deletes the selected edge with Backspace', async () => {
+        const user = userEvent.setup();
+        const edgeId = useFlowchartStore.getState().document.edges[0].id;
+
+        useFlowchartStore.getState().selectEdge(edgeId);
+
+        render(<CanvasArea />);
+
+        await user.keyboard('{Backspace}');
+
+        const edgeAfter = useFlowchartStore
+            .getState()
+            .document.edges.find((edge) => edge.id === edgeId);
+
+        expect(edgeAfter).toBeUndefined();
+    });
+
     it('does not delete when no node is selected', async () => {
         const user = userEvent.setup();
 

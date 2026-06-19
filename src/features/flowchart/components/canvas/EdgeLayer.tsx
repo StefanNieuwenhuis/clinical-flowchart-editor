@@ -8,10 +8,17 @@ interface EdgeLayerProps {
     nodes: FlowNode[];
     edges: FlowEdge[];
     nodeHeights?: Map<string, number>;
-    onEdgeLabelClick?: (edgeId: string, x: number, y: number) => void;
+    selectedEdgeId?: string | null;
+    onEdgeSelect?: (edgeId: string) => void;
 }
 
-export function EdgeLayer({ nodes, edges, nodeHeights = new Map(), onEdgeLabelClick }: EdgeLayerProps) {
+export function EdgeLayer({
+    nodes,
+    edges,
+    nodeHeights = new Map(),
+    selectedEdgeId = null,
+    onEdgeSelect,
+}: EdgeLayerProps) {
     const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
     const bounds = getGraphBounds(nodes);
     const nodeById = new Map(nodes.map((node) => [node.id, node]));
@@ -124,6 +131,7 @@ export function EdgeLayer({ nodes, edges, nodeHeights = new Map(), onEdgeLabelCl
                 }
 
                 const needsLabel = isEdgeNeedsLabel(edge);
+                const isSelected = selectedEdgeId === edge.id;
                 const visual = getEdgeVisual(edge, needsLabel);
                 const path = getEdgePath(
                     from,
@@ -143,22 +151,52 @@ export function EdgeLayer({ nodes, edges, nodeHeights = new Map(), onEdgeLabelCl
                 return (
                     <g key={edge.id}>
                         <path
+                            data-canvas-ui
+                            data-edge-id={edge.id}
                             d={path}
                             fill="none"
-                            strokeWidth="2"
-                            className={visual.strokeClass}
+                            stroke="transparent"
+                            strokeWidth="14"
+                            strokeLinecap="round"
+                            style={{ cursor: 'pointer' }}
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onClick={() => {
+                                if (onEdgeSelect) {
+                                    onEdgeSelect(edge.id);
+                                }
+                            }}
+                            className="pointer-events-auto"
+                        />
+
+                        {isSelected && (
+                            <path
+                                data-selected-edge-halo
+                                d={path}
+                                fill="none"
+                                strokeWidth="10"
+                                strokeLinecap="round"
+                                className="stroke-sky-300/60 pointer-events-none"
+                                style={needsLabel ? { strokeDasharray: "4,4" } : undefined}
+                            />
+                        )}
+
+                        <path
+                            d={path}
+                            fill="none"
+                            strokeWidth={isSelected ? "4" : "2"}
                             style={needsLabel ? { strokeDasharray: "4,4" } : undefined}
                             markerEnd={`url(#${visual.markerId})`}
+                            className={['pointer-events-none', visual.strokeClass].join(' ')}
                         />
 
                         {edge.label.trim() ? (
                             <g
                                 data-canvas-ui
-                                style={{ cursor: onEdgeLabelClick ? "pointer" : "default" }}
+                                style={{ cursor: "pointer" }}
                                 onPointerDown={(event) => event.stopPropagation()}
                                 onClick={() => {
-                                    if (onEdgeLabelClick) {
-                                        onEdgeLabelClick(edge.id, label.x, label.y);
+                                    if (onEdgeSelect) {
+                                        onEdgeSelect(edge.id);
                                     }
                                 }}
                                 className="pointer-events-auto"
@@ -182,8 +220,8 @@ export function EdgeLayer({ nodes, edges, nodeHeights = new Map(), onEdgeLabelCl
                                 style={{ cursor: "pointer" }}
                                 onPointerDown={(event) => event.stopPropagation()}
                                 onClick={() => {
-                                    if (onEdgeLabelClick) {
-                                        onEdgeLabelClick(edge.id, label.x, label.y);
+                                    if (onEdgeSelect) {
+                                        onEdgeSelect(edge.id);
                                     }
                                 }}
                                 onMouseEnter={() => setHoveredEdgeId(edge.id)}

@@ -14,11 +14,14 @@ export default function App() {
   const selectedNodeId = useFlowchartStore(
       (state) => state.document.selectedNodeId,
   );
+  const selectedEdgeId = useFlowchartStore(
+    (state) => state.document.selectedEdgeId,
+  );
 
   return (
       <>
         <AppLayout
-            showEditor={selectedNodeId !== null}
+      showEditor={selectedNodeId !== null || selectedEdgeId !== null}
             helpButton={<button
                 type="button"
                 className="fixed bottom-10 right-5 inline-flex size-10 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm transition hover:bg-slate-50"

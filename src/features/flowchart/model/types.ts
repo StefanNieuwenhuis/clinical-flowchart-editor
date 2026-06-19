@@ -37,5 +37,6 @@ export interface FlowchartDocument {
     nodes: FlowNode[];
     edges: FlowEdge[];
     selectedNodeId: string | null;
+    selectedEdgeId: string | null;
     viewport: ViewportState;
 }

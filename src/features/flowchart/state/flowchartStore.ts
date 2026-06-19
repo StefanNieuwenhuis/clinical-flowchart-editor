@@ -10,9 +10,11 @@ export interface FlowchartState {
     exportDocument: () => string;
     addNodeOfTypeAt: (type: NodeType, position: {x: number; y: number;}) => void;
     deleteNode: (nodeId: string) => void;
+    deleteEdge: (edgeId: string) => void;
     connectNodes: (fromNodeId: string, toNodeId: string) => void;
     updateEdge: (edgeId: string, patch: Partial<FlowEdge>) => void;
     selectNode: (nodeId: string) => void;
+    selectEdge: (edgeId: string) => void;
     updateNode: (nodeId: string, patch: Partial<FlowNode>) => void;
     moveNode: (nodeId: string, position: {x: number, y: number}) => void;
 
@@ -93,6 +95,35 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
                         state.document.selectedNodeId === nodeId
                             ? null
                             : state.document.selectedNodeId,
+                    selectedEdgeId:
+                        state.document.selectedEdgeId !== null
+                        && state.document.edges.some(
+                            (edge) => edge.id === state.document.selectedEdgeId
+                                && (edge.from === nodeId || edge.to === nodeId),
+                        )
+                            ? null
+                            : state.document.selectedEdgeId,
+                },
+            };
+        });
+    },
+
+    deleteEdge: (edgeId: string): void => {
+        set((state: FlowchartState) => {
+            const edgeExists = state.document.edges.some((edge) => edge.id === edgeId);
+
+            if (!edgeExists) {
+                return state;
+            }
+
+            return {
+                document: {
+                    ...state.document,
+                    edges: state.document.edges.filter((edge) => edge.id !== edgeId),
+                    selectedEdgeId:
+                        state.document.selectedEdgeId === edgeId
+                            ? null
+                            : state.document.selectedEdgeId,
                 },
             };
         });
@@ -175,6 +206,17 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
             document: {
                 ...state.document,
                 selectedNodeId: nodeId,
+                selectedEdgeId: null,
+            },
+        }));
+    },
+
+    selectEdge: (edgeId: string): void => {
+        set((state: FlowchartState) => ({
+            document: {
+                ...state.document,
+                selectedNodeId: null,
+                selectedEdgeId: edgeId,
             },
         }));
     },
@@ -184,6 +226,7 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
             document: {
                 ...state.document,
                 selectedNodeId: null,
+                selectedEdgeId: null,
             },
         }));
     },

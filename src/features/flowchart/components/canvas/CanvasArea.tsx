@@ -11,7 +11,6 @@ import {getViewportCenterInWorld} from "../../utils/viewportMath.ts";
 import {clamp} from "../../../../shared/utils/clamp.ts";
 import {getSourceConnectorCenter} from "../../utils/edgeGeometry.ts";
 import {computePreviewEdge, type PreviewEdge} from "../../utils/previewEdgeGeometry.ts";
-import {EdgeLabelDropdown} from "./EdgeLabelDropdown.tsx";
 
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 2.0;
@@ -50,6 +49,7 @@ export function CanvasArea(): ReactNode {
     const nodes: FlowNode[] = useFlowchartStore((state: FlowchartState): FlowNode[] => state.document.nodes);
     const edges: FlowEdge[] = useFlowchartStore((state: FlowchartState): FlowEdge[] => state.document.edges);
     const selectedNodeId: string | null = useFlowchartStore((state: FlowchartState): string | null => state.document.selectedNodeId);
+    const selectedEdgeId: string | null = useFlowchartStore((state: FlowchartState): string | null => state.document.selectedEdgeId);
     const viewport: ViewportState = useFlowchartStore((state: FlowchartState): ViewportState => state.document.viewport);
 
     const addNodeOfTypeAt = useFlowchartStore((state: FlowchartState) => state.addNodeOfTypeAt);
@@ -58,10 +58,11 @@ export function CanvasArea(): ReactNode {
     );
     const requestTitleFocus = useCanvasCommandStore((state) => state.requestTitleFocus);
     const selectNode: (nodeId: string) => void = useFlowchartStore((state: FlowchartState): (nodeId: string) => void => state.selectNode);
+    const selectEdge: (edgeId: string) => void = useFlowchartStore((state: FlowchartState): (edgeId: string) => void => state.selectEdge);
     const clearSelection: Noop = useFlowchartStore((state: FlowchartState): () => void => state.clearSelection);
     const deleteNode = useFlowchartStore((state: FlowchartState) => state.deleteNode);
+    const deleteEdge = useFlowchartStore((state: FlowchartState) => state.deleteEdge);
     const connectNodes = useFlowchartStore((state: FlowchartState) => state.connectNodes);
-    const updateEdge = useFlowchartStore((state: FlowchartState) => state.updateEdge);
     const moveNode: (nodeId: string, position: {x: number, y:number}) => void = useFlowchartStore((state: FlowchartState): (nodeId: string, position: {x: number, y:number}) => void => state.moveNode);
 
     const [pendingSourceId, setPendingSourceId] = useState<string | null>(null);
@@ -71,8 +72,6 @@ export function CanvasArea(): ReactNode {
     const [dragCursorWorld, setDragCursorWorld] = useState<Point | null>(null);
     const [hoveredTargetNodeId, setHoveredTargetNodeId] = useState<string | null>(null);
     const [nodeHeights, setNodeHeights] = useState<Map<string, number>>(new Map());
-    const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
-    const [edgeLabelDropdownPos, setEdgeLabelDropdownPos] = useState<Point | null>(null);
     const nodeRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
     const pendingSourceNode = pendingSourceId
@@ -127,8 +126,6 @@ export function CanvasArea(): ReactNode {
         setDragSourceNodeId(null);
         setDragCursorWorld(null);
         setHoveredTargetNodeId(null);
-        setSelectedEdgeId(null);
-        setEdgeLabelDropdownPos(null);
     }
 
     useEffect(() => {
@@ -142,7 +139,18 @@ export function CanvasArea(): ReactNode {
                 return;
             }
 
-            if (selectedNodeId === null || shouldIgnoreDeleteKeyTarget(event.target)) {
+            if (shouldIgnoreDeleteKeyTarget(event.target)) {
+                return;
+            }
+
+            if (selectedEdgeId !== null) {
+                event.preventDefault();
+                deleteEdge(selectedEdgeId);
+                resetInteractionState();
+                return;
+            }
+
+            if (selectedNodeId === null) {
                 return;
             }
 
@@ -152,7 +160,7 @@ export function CanvasArea(): ReactNode {
         }
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [deleteNode, selectedNodeId]);
+    }, [deleteEdge, deleteNode, selectedEdgeId, selectedNodeId]);
 
     function toWorldPoint(event: React.PointerEvent<HTMLDivElement>): Point | null {
         const canvas = canvasRef.current;
@@ -275,20 +283,8 @@ export function CanvasArea(): ReactNode {
         setHoveredTargetNodeId(null);
     }
 
-    function handleEdgeLabelClick(edgeId: string, x: number, y: number) {
-        setSelectedEdgeId(edgeId);
-        setEdgeLabelDropdownPos({ x, y });
-    }
-
-    function handleEdgeLabelSelect(edgeId: string, label: "Ja" | "Nee") {
-        updateEdge(edgeId, { label });
-        setSelectedEdgeId(null);
-        setEdgeLabelDropdownPos(null);
-    }
-
-    function handleEdgeLabelDropdownClose() {
-        setSelectedEdgeId(null);
-        setEdgeLabelDropdownPos(null);
+    function handleEdgeSelect(edgeId: string) {
+        selectEdge(edgeId);
     }
 
     function handleCanvasPointerMoveCapture(event: React.PointerEvent<HTMLDivElement>) {
@@ -457,13 +453,28 @@ export function CanvasArea(): ReactNode {
                 </div>
             )}
 
+            {selectedEdgeId && (
+                <div
+                    data-canvas-ui
+                    className="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full border border-sky-200 bg-sky-50/95 px-3 py-2 text-xs font-medium text-sky-800 shadow-sm"
+                >
+                    Verbinding geselecteerd. Druk Delete of Backspace om te verwijderen.
+                </div>
+            )}
+
             <div
                 className="pointer-events-none absolute inset-0 origin-top-left"
                 style={{
                     transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
                 }}
             >
-                <EdgeLayer nodes={nodes} edges={edges} nodeHeights={nodeHeights} onEdgeLabelClick={handleEdgeLabelClick} />
+                <EdgeLayer
+                    nodes={nodes}
+                    edges={edges}
+                    nodeHeights={nodeHeights}
+                    selectedEdgeId={selectedEdgeId}
+                    onEdgeSelect={handleEdgeSelect}
+                />
 
                 {previewEdge && (
                     <svg
@@ -565,16 +576,6 @@ export function CanvasArea(): ReactNode {
                 }
             </div>
 
-            {selectedEdgeId && edgeLabelDropdownPos && (
-                <EdgeLabelDropdown
-                    edgeId={selectedEdgeId}
-                    currentLabel={edges.find((e) => e.id === selectedEdgeId)?.label ?? ""}
-                    x={viewport.x + edgeLabelDropdownPos.x * viewport.scale}
-                    y={viewport.y + edgeLabelDropdownPos.y * viewport.scale}
-                    onSelectLabel={handleEdgeLabelSelect}
-                    onClose={handleEdgeLabelDropdownClose}
-                />
-            )}
         </div>
     );
 }
