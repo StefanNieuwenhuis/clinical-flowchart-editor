@@ -1,6 +1,6 @@
 import {type ReactNode, useEffect, useRef} from "react";
 import {type FlowchartState, useFlowchartStore} from "../../state/flowchartStore.ts";
-import {X} from "lucide-react";
+import {Trash2, X} from "lucide-react";
 import type {Noop} from "../../model/types.ts";
 import {useCanvasCommandStore} from "../../state/canvasCommandStore.ts";
 
@@ -13,6 +13,7 @@ export function RightEditorPanel(): ReactNode {
         (state) => state.document.nodes.find((node) => node.id === selectedNodeId) ?? null,
     );
     const updateNode = useFlowchartStore((state: FlowchartState) => state.updateNode);
+    const deleteNode = useFlowchartStore((state: FlowchartState) => state.deleteNode);
     const clearSelection: Noop = useFlowchartStore((state: FlowchartState): Noop => state.clearSelection);
 
     useEffect(() => {
@@ -78,6 +79,18 @@ export function RightEditorPanel(): ReactNode {
                         className="mt-1 w-full resize-none rounded-md border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500"
                     />
                 </label>
+
+                <div className="pt-2">
+                    <button
+                        type="button"
+                        onClick={() => deleteNode(selectedNode.id)}
+                        className="inline-flex items-center gap-2 rounded-md border border-rose-300 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+                        aria-label="Verwijder stap"
+                    >
+                        <Trash2 className="size-4" />
+                        Verwijder stap
+                    </button>
+                </div>
             </div>
         </div>
     );

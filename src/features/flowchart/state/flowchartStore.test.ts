@@ -226,6 +226,44 @@ describe('FlowchartStore', () => {
         });
     });
 
+    it('should delete a selected node and all its connected edges', () => {
+        const stateBefore = useFlowchartStore.getState().document;
+        const nodeId = stateBefore.nodes.find((node) => node.id === 'q_leakage')?.id;
+
+        expect(nodeId).toBeTruthy();
+
+        useFlowchartStore.getState().selectNode(nodeId!);
+
+        const connectedEdgesBefore = stateBefore.edges.filter(
+            (edge) => edge.from === nodeId || edge.to === nodeId,
+        );
+
+        expect(connectedEdgesBefore.length).toBeGreaterThan(0);
+
+        useFlowchartStore.getState().deleteNode(nodeId!);
+
+        const stateAfter = useFlowchartStore.getState().document;
+        const nodeAfter = stateAfter.nodes.find((node) => node.id === nodeId);
+        const connectedEdgesAfter = stateAfter.edges.filter(
+            (edge) => edge.from === nodeId || edge.to === nodeId,
+        );
+
+        expect(nodeAfter).toBeUndefined();
+        expect(connectedEdgesAfter).toHaveLength(0);
+        expect(stateAfter.edges).toHaveLength(stateBefore.edges.length - connectedEdgesBefore.length);
+        expect(stateAfter.selectedNodeId).toBeNull();
+    });
+
+    it('should not change state when deleting a non-existing node', () => {
+        const stateBefore = useFlowchartStore.getState().document;
+
+        useFlowchartStore.getState().deleteNode('missing-node-id');
+
+        const stateAfter = useFlowchartStore.getState().document;
+
+        expect(stateAfter).toEqual(stateBefore);
+    });
+
     it('should initialize with a semantic version', () => {
         expect(useFlowchartStore.getState().document.version).toMatch(/^\d+\.\d+\.\d+$/);
     });

@@ -79,4 +79,33 @@ describe('RightEditorPanel', () => {
 
         expect(screen.getByLabelText('Titel')).toHaveFocus();
     });
+
+    it('deletes the selected node and its connected edges from the visible delete action', async () => {
+        const user = userEvent.setup();
+        const nodeId = 'q_leakage';
+
+        useFlowchartStore.getState().selectNode(nodeId);
+
+        const edgesBefore = useFlowchartStore.getState().document.edges;
+        const connectedEdgesBefore = edgesBefore.filter(
+            (edge) => edge.from === nodeId || edge.to === nodeId,
+        );
+
+        render(<RightEditorPanel />);
+
+        await user.click(screen.getByRole('button', { name: /verwijder stap/i }));
+
+        const documentAfter = useFlowchartStore.getState().document;
+        const nodeAfter = documentAfter.nodes.find((node) => node.id === nodeId);
+        const connectedEdgesAfter = documentAfter.edges.filter(
+            (edge) => edge.from === nodeId || edge.to === nodeId,
+        );
+
+        expect(connectedEdgesBefore.length).toBeGreaterThan(0);
+        expect(nodeAfter).toBeUndefined();
+        expect(documentAfter.selectedNodeId).toBeNull();
+        expect(connectedEdgesAfter).toHaveLength(0);
+        expect(documentAfter.edges).toHaveLength(edgesBefore.length - connectedEdgesBefore.length);
+        expect(screen.queryAllByRole('textbox')).toHaveLength(0);
+    });
 });

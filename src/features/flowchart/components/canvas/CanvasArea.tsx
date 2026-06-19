@@ -27,6 +27,23 @@ function getPreviewEdgeStrokeClass(sourceNode: FlowNode | null): string {
     // Non-start nodes require a Ja/Nee decision, so previews use the warning color.
     return sourceNode.type === 'start' ? 'stroke-slate-400' : 'stroke-amber-400';
 }
+
+function isEditableTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof Element)) {
+        return false;
+    }
+
+    if (target.closest('[data-canvas-ui]')) {
+        return true;
+    }
+
+    return Boolean(
+        target.closest(
+            'input, textarea, select, [contenteditable=""], [contenteditable="true"]',
+        ),
+    );
+}
+
 export function CanvasArea(): ReactNode {
     const canvasRef: RefObject<HTMLDivElement | null> = useRef<HTMLDivElement | null>(null);
 
@@ -42,6 +59,7 @@ export function CanvasArea(): ReactNode {
     const requestTitleFocus = useCanvasCommandStore((state) => state.requestTitleFocus);
     const selectNode: (nodeId: string) => void = useFlowchartStore((state: FlowchartState): (nodeId: string) => void => state.selectNode);
     const clearSelection: Noop = useFlowchartStore((state: FlowchartState): () => void => state.clearSelection);
+    const deleteNode = useFlowchartStore((state: FlowchartState) => state.deleteNode);
     const connectNodes = useFlowchartStore((state: FlowchartState) => state.connectNodes);
     const updateEdge = useFlowchartStore((state: FlowchartState) => state.updateEdge);
     const moveNode: (nodeId: string, position: {x: number, y:number}) => void = useFlowchartStore((state: FlowchartState): (nodeId: string, position: {x: number, y:number}) => void => state.moveNode);
@@ -102,22 +120,39 @@ export function CanvasArea(): ReactNode {
         nodeRefs.current.delete(nodeId);
     }
 
+    function resetInteractionState() {
+        setPendingSourceId(null);
+        setPreviewCursorWorld(null);
+        setConnectFeedback(null);
+        setDragSourceNodeId(null);
+        setDragCursorWorld(null);
+        setHoveredTargetNodeId(null);
+        setSelectedEdgeId(null);
+        setEdgeLabelDropdownPos(null);
+    }
+
     useEffect(() => {
         function handleKeyDown(event: KeyboardEvent) {
             if (event.key === 'Escape') {
-                setPendingSourceId(null);
-                setPreviewCursorWorld(null);
-                setConnectFeedback(null);
-                setDragSourceNodeId(null);
-                setDragCursorWorld(null);
-                setHoveredTargetNodeId(null);
-                setSelectedEdgeId(null);
-                setEdgeLabelDropdownPos(null);
+                resetInteractionState();
+                return;
             }
+
+            if (event.key !== 'Delete' && event.key !== 'Backspace') {
+                return;
+            }
+
+            if (selectedNodeId === null || isEditableTarget(event.target)) {
+                return;
+            }
+
+            event.preventDefault();
+            deleteNode(selectedNodeId);
+            resetInteractionState();
         }
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+    }, [deleteNode, selectedNodeId]);
 
     function toWorldPoint(event: React.PointerEvent<HTMLDivElement>): Point | null {
         const canvas = canvasRef.current;
