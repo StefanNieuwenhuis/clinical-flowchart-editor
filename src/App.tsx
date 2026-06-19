@@ -1,5 +1,6 @@
 
 import { HelpCircle } from "lucide-react";
+import { Analytics } from "@vercel/analytics/react";
 import {AppLayout} from "./layouts/AppLayout.tsx";
 import { useFlowchartStore } from "./features/flowchart/state/flowchartStore";
 import {TopBar} from "./features/flowchart/components/topbar/TopBar.tsx";
@@ -14,15 +15,18 @@ export default function App() {
   );
 
   return (
-      <AppLayout
-          showEditor={selectedNodeId !== null}
-          helpButton={<button
-              type="button"
-              className="fixed bottom-10 right-5 inline-flex size-10 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm transition hover:bg-slate-50"
-              aria-label="Open hulp"
-          >
-            <HelpCircle className="size-5"/>
-          </button>} topbar={<TopBar/>} sidebar={<LeftPanel/>} canvas={<CanvasArea/>} editor={<RightEditorPanel/>} statusbar={<StatusBar/>}
-                />
+      <>
+        <AppLayout
+            showEditor={selectedNodeId !== null}
+            helpButton={<button
+                type="button"
+                className="fixed bottom-10 right-5 inline-flex size-10 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm transition hover:bg-slate-50"
+                aria-label="Open hulp"
+            >
+              <HelpCircle className="size-5"/>
+            </button>} topbar={<TopBar/>} sidebar={<LeftPanel/>} canvas={<CanvasArea/>} editor={<RightEditorPanel/>} statusbar={<StatusBar/>}
+                  />
+        <Analytics />
+      </>
   );
 }
