@@ -7,10 +7,12 @@ import {cleanup, render, screen} from "@testing-library/react";
 import {useFlowchartStore} from "../../state/flowchartStore.ts";
 import {RightEditorPanel} from "./RightEditorPanel.tsx";
 import userEvent from "@testing-library/user-event";
+import {useCanvasCommandStore} from "../../state/canvasCommandStore.ts";
 
 describe('RightEditorPanel', () => {
     beforeEach(() => {
         useFlowchartStore.getState().clearSelection();
+        useCanvasCommandStore.setState({ focusTitleRequestId: 0 });
     });
     afterEach(() => {
         cleanup();
@@ -67,5 +69,14 @@ describe('RightEditorPanel', () => {
         await user.click(screen.getByRole('button', { name: /sluit editor/i }));
 
         expect(screen.queryAllByRole('textbox')).toHaveLength(0);
+    });
+
+    it('focuses title input when a new node focus request is triggered', () => {
+        useCanvasCommandStore.getState().requestTitleFocus();
+        useFlowchartStore.getState().selectNode('start');
+
+        render(<RightEditorPanel />);
+
+        expect(screen.getByLabelText('Titel')).toHaveFocus();
     });
 });

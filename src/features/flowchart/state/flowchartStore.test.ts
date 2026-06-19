@@ -87,7 +87,7 @@ describe('FlowchartStore', () => {
     it('should add a node of a given type at a position and selects it', () => {
         const previousNodeCount = useFlowchartStore.getState().document.nodes.length;
 
-        useFlowchartStore.getState().addNodeOfTypeAt('question', {
+        useFlowchartStore.getState().addNodeOfTypeAt('decision', {
             x: 120,
             y: 240,
         });
@@ -97,7 +97,7 @@ describe('FlowchartStore', () => {
 
         expect(state.document.nodes).toHaveLength(previousNodeCount + 1);
         expect(addedNode).toMatchObject({
-            type: 'question',
+            type: 'decision',
             x: 120,
             y: 240,
         });
@@ -165,7 +165,7 @@ describe('FlowchartStore', () => {
         const NODE_Y = 240;
         const previousEdgeCount = useFlowchartStore.getState().document.edges.length;
 
-        useFlowchartStore.getState().addNodeOfTypeAt('question', {
+        useFlowchartStore.getState().addNodeOfTypeAt('decision', {
             x: NODE_X,
             y: NODE_Y,
         });

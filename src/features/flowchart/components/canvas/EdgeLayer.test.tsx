@@ -96,8 +96,8 @@ describe('EdgeLayer', () => {
                 y: 100,
             },
             {
-                id: 'question',
-                type: 'question',
+                id: 'decision',
+                type: 'decision',
                 title: 'Question',
                 body: '',
                 x: 400,
@@ -113,8 +113,8 @@ describe('EdgeLayer', () => {
             },
         ];
         const edges: FlowEdge[] = [
-            { id: 'e1', from: 'start', to: 'question', label: '' },
-            { id: 'e2', from: 'question', to: 'end', label: '' },
+            { id: 'e1', from: 'start', to: 'decision', label: '' },
+            { id: 'e2', from: 'decision', to: 'end', label: '' },
         ];
 
         const { container } = render(<EdgeLayer nodes={nodes2} edges={edges} onEdgeLabelClick={undefined} />);

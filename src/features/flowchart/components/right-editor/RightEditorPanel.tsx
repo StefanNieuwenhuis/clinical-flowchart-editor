@@ -1,15 +1,26 @@
-import type {ReactNode} from "react";
+import {type ReactNode, useEffect, useRef} from "react";
 import {type FlowchartState, useFlowchartStore} from "../../state/flowchartStore.ts";
 import {X} from "lucide-react";
 import type {Noop} from "../../model/types.ts";
+import {useCanvasCommandStore} from "../../state/canvasCommandStore.ts";
 
 export function RightEditorPanel(): ReactNode {
+    const titleInputRef = useRef<HTMLInputElement | null>(null);
+    const focusTitleRequestId = useCanvasCommandStore((state) => state.focusTitleRequestId);
     const selectedNodeId = useFlowchartStore((state) => state.document.selectedNodeId);
     const selectedNode = useFlowchartStore(
         (state) => state.document.nodes.find((node) => node.id === selectedNodeId) ?? null,
     );
     const updateNode = useFlowchartStore((state: FlowchartState) => state.updateNode);
     const clearSelection: Noop = useFlowchartStore((state: FlowchartState): Noop => state.clearSelection);
+
+    useEffect(() => {
+        if (!selectedNodeId) {
+            return;
+        }
+
+        titleInputRef.current?.focus();
+    }, [focusTitleRequestId, selectedNodeId]);
 
     if (!selectedNode) {
         return null;
@@ -41,6 +52,7 @@ export function RightEditorPanel(): ReactNode {
                 <label className="block">
                     <span className="text-xs font-medium text-slate-600">Titel</span>
                     <input
+                        ref={titleInputRef}
                         value={selectedNode.title}
                         onChange={(event): void =>
                             updateNode(selectedNode.id, { title: event.target.value })

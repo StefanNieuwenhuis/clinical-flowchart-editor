@@ -1,13 +1,6 @@
 export type Noop = () => void;
 
-export type NodeType =
-    | "start"
-    | "question"
-    | "action"
-    | "consult_nurse"
-    | "consult_doctor"
-    | "emergency"
-    | "end";
+export type NodeType = "start" | "decision" | "process" | "end";
 
 export type FlowchartStatus = "Concept" | "Review" | "Goedgekeurd";
 
@@ -20,6 +13,8 @@ export interface FlowNode {
     body: string;
     x: number;
     y: number;
+    color?: string;
+    tags?: string[];
 }
 
 export interface FlowEdge {

@@ -42,13 +42,13 @@ describe('CanvasArea', () => {
 
         expect(typeof addNodeAtViewportCenter).toBe('function');
 
-        addNodeAtViewportCenter?.('question');
+        addNodeAtViewportCenter?.('decision');
 
         const document = useFlowchartStore.getState().document;
         const addedNode = document.nodes.at(-1);
 
         expect(document.nodes).toHaveLength(previousNodeCount + 1);
-        expect(addedNode?.type).toBe('question');
+        expect(addedNode?.type).toBe('decision');
 
         unmount();
 

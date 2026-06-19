@@ -3,43 +3,33 @@ import type { NodeType } from "./types";
 export interface NodeTypeDefinition {
     label: string;
     defaultTitle: string;
+    description: string;
     terminal: boolean;
 }
 
 export const nodeTypes: Record<NodeType, NodeTypeDefinition> = {
     start: {
         label: "Start",
-        defaultTitle: "Start stoma-observatie",
-        terminal: false,
+        defaultTitle: "Start",
+        description: "Begin het proces met een eerste observatie.",
+        terminal: true,
     },
-    question: {
+    decision: {
         label: "Vraag",
-        defaultTitle: "Voer klinische vraag in",
+        defaultTitle: "Vraag",
+        description: "Dit is een beslissing die een keuze bepaalt.",
         terminal: false,
     },
-    action: {
-        label: "Instructie",
-        defaultTitle: "Geef instructie",
-        terminal: true,
-    },
-    consult_nurse: {
-        label: "Stomaverpleegkundige raadplegen",
-        defaultTitle: "Raadpleeg stomaverpleegkundige",
-        terminal: true,
-    },
-    consult_doctor: {
-        label: "Arts contacteren",
-        defaultTitle: "Arts contacteren",
-        terminal: true,
-    },
-    emergency: {
-        label: "Spoed",
-        defaultTitle: "Zoek met spoed medische hulp",
-        terminal: true,
+    process: {
+        label: "Actie",
+        defaultTitle: "Actie",
+        description: "Voer hier een actie of interventie uit.",
+        terminal: false,
     },
     end: {
         label: "Einde",
-        defaultTitle: "Ga door met routinezorg",
+        defaultTitle: "Einde",
+        description: "Rond het proces hier af.",
         terminal: true,
     },
 };

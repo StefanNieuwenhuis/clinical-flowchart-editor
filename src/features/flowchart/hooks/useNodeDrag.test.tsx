@@ -8,7 +8,7 @@ import { render, screen } from '@testing-library/react';
 
 const testNode: FlowNode = {
     id: 'node-1',
-    type: 'question',
+    type: 'decision',
     title: 'Question',
     body: '',
     x: 100,

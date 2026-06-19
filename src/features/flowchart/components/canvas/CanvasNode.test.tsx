@@ -19,7 +19,7 @@ const SCALE = 1.5;
 
 const BASE_NODE: FlowNode = {
     id: 'node-1',
-    type: 'question',
+    type: 'decision',
     title: 'Vraag titel',
     body: 'Details over de vraag',
     x: NODE_X,
