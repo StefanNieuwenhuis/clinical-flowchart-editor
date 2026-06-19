@@ -28,7 +28,7 @@ function getPreviewEdgeStrokeClass(sourceNode: FlowNode | null): string {
     return sourceNode.type === 'start' ? 'stroke-slate-400' : 'stroke-amber-400';
 }
 
-function isEditableTarget(target: EventTarget | null): boolean {
+function shouldIgnoreDeleteKeyTarget(target: EventTarget | null): boolean {
     if (!(target instanceof Element)) {
         return false;
     }
@@ -142,7 +142,7 @@ export function CanvasArea(): ReactNode {
                 return;
             }
 
-            if (selectedNodeId === null || isEditableTarget(event.target)) {
+            if (selectedNodeId === null || shouldIgnoreDeleteKeyTarget(event.target)) {
                 return;
             }
 
