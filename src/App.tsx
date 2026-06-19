@@ -1,6 +1,7 @@
 
 import { HelpCircle } from "lucide-react";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import {AppLayout} from "./layouts/AppLayout.tsx";
 import { useFlowchartStore } from "./features/flowchart/state/flowchartStore";
 import {TopBar} from "./features/flowchart/components/topbar/TopBar.tsx";
@@ -27,6 +28,7 @@ export default function App() {
             </button>} topbar={<TopBar/>} sidebar={<LeftPanel/>} canvas={<CanvasArea/>} editor={<RightEditorPanel/>} statusbar={<StatusBar/>}
                   />
         <Analytics />
+        <SpeedInsights />
       </>
   );
 }
