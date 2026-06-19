@@ -12,6 +12,7 @@ const STATUS_LABELS: Record<FlowchartStatus, string> = {
 export function StatusBar() {
     const document = useFlowchartStore((state) => state.document);
     const isDirty = useFlowchartStore((state) => state.isDirty);
+    const lastSaveWasManual = useFlowchartStore((state) => state.lastSaveWasManual);
 
     const { issues, errorCount, warningCount } = useMemo(() => {
         const issues = validateFlowchartDocument(document);
@@ -34,7 +35,7 @@ export function StatusBar() {
 
     return (
         <div className="flex h-full items-center justify-between px-4 text-xs text-slate-500">
-            <span>{isDirty ? 'Niet opgeslagen' : 'Automatisch opgeslagen'}</span>
+            <span>{isDirty ? 'Niet opgeslagen' : lastSaveWasManual ? 'Opgeslagen' : 'Automatisch opgeslagen'}</span>
 
             <span className="flex items-center gap-3">
                 <span>{statusLabel}</span>

@@ -87,12 +87,20 @@ describe('StatusBar', () => {
         expect(screen.getByText(/missing node/i)).toBeInTheDocument();
     });
 
-    it('should show "Automatisch opgeslagen" when not dirty', () => {
-        useFlowchartStore.setState({ isDirty: false });
+    it('should show "Automatisch opgeslagen" when not dirty and last save was auto', () => {
+        useFlowchartStore.setState({ isDirty: false, lastSaveWasManual: false });
 
         render(<StatusBar />);
 
         expect(screen.getByText('Automatisch opgeslagen')).toBeInTheDocument();
+    });
+
+    it('should show "Opgeslagen" when not dirty and last save was manual', () => {
+        useFlowchartStore.setState({ isDirty: false, lastSaveWasManual: true });
+
+        render(<StatusBar />);
+
+        expect(screen.getByText('Opgeslagen')).toBeInTheDocument();
     });
 
     it('should show "Niet opgeslagen" when dirty', () => {

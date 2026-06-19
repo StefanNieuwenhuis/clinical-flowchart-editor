@@ -7,6 +7,7 @@ import {loadFromStorage, saveToStorage} from "../utils/flowchartStorage.ts";
 export interface FlowchartState {
     document: FlowchartDocument;
     isDirty: boolean;
+    lastSaveWasManual: boolean;
     saveDocument: Noop;
     exportDocument: () => string;
     addNodeOfTypeAt: (type: NodeType, position: {x: number; y: number;}) => void;
@@ -47,6 +48,7 @@ const AUTO_SAVE_DELAY_MS = 500;
 export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create<FlowchartState>((set) => ({
     document: loadFromStorage(),
     isDirty: false,
+    lastSaveWasManual: false,
 
     saveDocument: () => {
         set((state) => {
@@ -58,6 +60,7 @@ export const useFlowchartStore: UseBoundStore<StoreApi<FlowchartState>> = create
             return {
                 document: newDocument,
                 isDirty: false,
+                lastSaveWasManual: true,
             };
         });
     },

@@ -458,6 +458,16 @@ describe('FlowchartStore', () => {
         expect(useFlowchartStore.getState().isDirty).toBe(false);
     });
 
+    it('should set lastSaveWasManual to true after explicit save', () => {
+        useFlowchartStore.getState().saveDocument();
+
+        expect(useFlowchartStore.getState().lastSaveWasManual).toBe(true);
+    });
+
+    it('should initialise lastSaveWasManual as false', () => {
+        expect(useFlowchartStore.getState().lastSaveWasManual).toBe(false);
+    });
+
     it('should not set isDirty when selecting a node', () => {
         useFlowchartStore.getState().selectNode('start');
 
