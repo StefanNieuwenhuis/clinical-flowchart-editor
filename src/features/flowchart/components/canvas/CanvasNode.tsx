@@ -1,5 +1,5 @@
 import type {FlowNode} from "../../model/types.ts";
-import type {MouseEvent, ReactNode, PointerEvent} from "react";
+import type {MouseEvent, ReactNode, PointerEvent, RefObject} from "react";
 import {nodeTypes} from "../../model/nodeTypes.ts";
 import {useNodeDrag} from "../../hooks/useNodeDrag.ts";
 
@@ -21,6 +21,7 @@ interface CanvasNodeProps {
     onTargetConnectorPointerEnter?: (nodeId: string) => void;
     onTargetConnectorPointerLeave?: () => void;
     hoveredTargetNodeId?: string | null;
+    nodeRef?: RefObject<HTMLDivElement | null> | ((element: HTMLDivElement | null) => void);
 }
 
 export function CanvasNode({
@@ -41,6 +42,7 @@ export function CanvasNode({
     onTargetConnectorPointerEnter,
     onTargetConnectorPointerLeave,
     hoveredTargetNodeId,
+    nodeRef,
 }: CanvasNodeProps): ReactNode {
     const dragHandlers = useNodeDrag({
         nodeId: node.id,
@@ -93,6 +95,7 @@ export function CanvasNode({
 
     return (
         <div
+            ref={nodeRef}
             className="pointer-events-none absolute z-10"
             style={{ left: node.x, top: node.y }}
         >

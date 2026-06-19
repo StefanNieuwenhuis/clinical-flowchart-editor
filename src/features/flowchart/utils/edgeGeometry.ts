@@ -6,6 +6,8 @@ export type Point = {
     y: number;
 };
 
+export const CONNECTOR_OFFSET = 12;
+
 
 export function getNodeCenter(node: FlowNode): Point {
     return {
@@ -14,15 +16,38 @@ export function getNodeCenter(node: FlowNode): Point {
     };
 }
 
-export function getEdgePath(from: FlowNode, to: FlowNode, bounds: GraphBounds) {
+export function getSourceConnectorCenter(node: FlowNode, nodeHeight: number = NODE_HEIGHT): Point {
+    return {
+        x: node.x + NODE_WIDTH - CONNECTOR_OFFSET,
+        y: node.y + nodeHeight / 2,
+    };
+}
+
+export function getTargetConnectorCenter(node: FlowNode, nodeHeight: number = NODE_HEIGHT): Point {
+    return {
+        x: node.x - CONNECTOR_OFFSET,
+        y: node.y + nodeHeight / 2,
+    };
+}
+
+export function getEdgePath(
+    from: FlowNode,
+    to: FlowNode,
+    bounds: GraphBounds,
+    fromHeight: number = NODE_HEIGHT,
+    toHeight: number = NODE_HEIGHT,
+) {
+    const sourceCenter = getSourceConnectorCenter(from, fromHeight);
+    const targetCenter = getTargetConnectorCenter(to, toHeight);
+
     const start = {
-        x: from.x + NODE_WIDTH - bounds.left,
-        y: from.y + NODE_HEIGHT / 2 - bounds.top,
+        x: sourceCenter.x - bounds.left,
+        y: sourceCenter.y - bounds.top,
     };
 
     const end = {
-        x: to.x - bounds.left,
-        y: to.y + NODE_HEIGHT / 2 - bounds.top,
+        x: targetCenter.x - bounds.left,
+        y: targetCenter.y - bounds.top,
     };
 
     const controlOffset = Math.max(80, Math.abs(end.x - start.x) / 2);

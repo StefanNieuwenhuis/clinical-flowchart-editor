@@ -9,6 +9,7 @@ import {ViewportControls} from "./ViewportControls.tsx";
 import {useCanvasCommandStore} from "../../state/canvasCommandStore.ts";
 import {getViewportCenterInWorld} from "../../utils/viewportMath.ts";
 import {clamp} from "../../../../shared/utils/clamp.ts";
+import {getSourceConnectorCenter} from "../../utils/edgeGeometry.ts";
 
 const MIN_SCALE = 0.2;
 const MAX_SCALE = 2.0;
@@ -40,6 +41,8 @@ export function CanvasArea(): ReactNode {
     const [dragSourceNodeId, setDragSourceNodeId] = useState<string | null>(null);
     const [dragCursorWorld, setDragCursorWorld] = useState<Point | null>(null);
     const [hoveredTargetNodeId, setHoveredTargetNodeId] = useState<string | null>(null);
+    const [nodeHeights, setNodeHeights] = useState<Map<string, number>>(new Map());
+    const nodeRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
 
     const pendingSourceNode = pendingSourceId
         ? nodes.find((node) => node.id === pendingSourceId) ?? null
@@ -63,6 +66,18 @@ export function CanvasArea(): ReactNode {
             setHoveredTargetNodeId(null);
         },
     });
+
+    useEffect(() => {
+        const heights = new Map<string, number>();
+
+        nodeRefs.current.forEach((element, nodeId) => {
+            if (element) {
+                heights.set(nodeId, element.offsetHeight);
+            }
+        });
+
+        setNodeHeights(heights);
+    }, [nodes]);
 
     useEffect(() => {
         function handleKeyDown(event: KeyboardEvent) {
@@ -142,10 +157,9 @@ export function CanvasArea(): ReactNode {
             return;
         }
 
-        setPreviewCursorWorld({
-            x: sourceNode.x + NODE_WIDTH,
-            y: sourceNode.y + NODE_HEIGHT / 2,
-        });
+        setPreviewCursorWorld(
+            getSourceConnectorCenter(sourceNode, nodeHeights.get(sourceNode.id) ?? NODE_HEIGHT),
+        );
     }
 
     function handleCompleteConnect(targetNodeId: string) {
@@ -297,10 +311,10 @@ export function CanvasArea(): ReactNode {
 
     const previewEdge = pendingSourceNode && previewCursorWorld
         ? (() => {
-            const start = {
-                x: pendingSourceNode.x + NODE_WIDTH,
-                y: pendingSourceNode.y + NODE_HEIGHT / 2,
-            };
+            const start = getSourceConnectorCenter(
+                pendingSourceNode,
+                nodeHeights.get(pendingSourceNode.id) ?? NODE_HEIGHT,
+            );
 
             const end = previewCursorWorld;
 
@@ -335,10 +349,10 @@ export function CanvasArea(): ReactNode {
 
     const dragPreviewEdge = dragSourceNode && dragCursorWorld
         ? (() => {
-            const start = {
-                x: dragSourceNode.x + NODE_WIDTH,
-                y: dragSourceNode.y + NODE_HEIGHT / 2,
-            };
+            const start = getSourceConnectorCenter(
+                dragSourceNode,
+                nodeHeights.get(dragSourceNode.id) ?? NODE_HEIGHT,
+            );
 
             const end = dragCursorWorld;
 
@@ -417,7 +431,7 @@ export function CanvasArea(): ReactNode {
                     transform: `translate(${viewport.x}px, ${viewport.y}px) scale(${viewport.scale})`,
                 }}
             >
-                <EdgeLayer nodes={nodes} edges={edges} />
+                <EdgeLayer nodes={nodes} edges={edges} nodeHeights={nodeHeights} />
 
                 {previewEdge && (
                     <svg
@@ -479,6 +493,13 @@ export function CanvasArea(): ReactNode {
                             <CanvasNode
                                 key={node.id}
                                 node={node}
+                                nodeRef={(element) => {
+                                    if (element) {
+                                        nodeRefs.current.set(node.id, element);
+                                    } else {
+                                        nodeRefs.current.delete(node.id);
+                                    }
+                                }}
                                 scale={viewport.scale}
                                 selected={node.id === selectedNodeId}
                                 onSelect={isInConnectMode ? () => {} : selectNode}
