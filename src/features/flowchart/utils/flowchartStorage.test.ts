@@ -55,4 +55,22 @@ describe('flowchartStorage', () => {
 
         expect(loadFromStorage()).toEqual(initialFlowchart);
     });
+
+    it('should return initialFlowchart when stored value is missing required FlowchartDocument fields (e.g. viewport)', () => {
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({
+                title: 'Incomplete',
+                version: '1.0.0',
+                status: 'Concept',
+                nodes: [],
+                edges: [],
+                selectedNodeId: null,
+                selectedEdgeId: null,
+                // viewport intentionally missing
+            }),
+        );
+
+        expect(loadFromStorage()).toEqual(initialFlowchart);
+    });
 });

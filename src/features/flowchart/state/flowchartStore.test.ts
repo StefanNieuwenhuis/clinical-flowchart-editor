@@ -458,6 +458,24 @@ describe('FlowchartStore', () => {
         expect(useFlowchartStore.getState().isDirty).toBe(false);
     });
 
+    it('should reset isDirty to false after the auto-save debounce window', async () => {
+        const { vi } = await import('vitest');
+
+        vi.useFakeTimers();
+        try {
+            useFlowchartStore.getState().updateNode('start', { title: 'Gewijzigde titel' });
+            expect(useFlowchartStore.getState().isDirty).toBe(true);
+
+            vi.advanceTimersByTime(500);
+            vi.runOnlyPendingTimers();
+
+            expect(useFlowchartStore.getState().isDirty).toBe(false);
+            expect(useFlowchartStore.getState().lastSaveWasManual).toBe(false);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('should set lastSaveWasManual to true after explicit save', () => {
         useFlowchartStore.getState().saveDocument();
 

@@ -6,11 +6,21 @@ export const STORAGE_KEY = 'clinical-flowchart-editor.document';
 function isFlowchartDocument(value: unknown): value is FlowchartDocument {
     if (typeof value !== 'object' || value === null) return false;
     const doc = value as Record<string, unknown>;
+    const viewport = doc.viewport as Record<string, unknown> | null | undefined;
+
     return (
         typeof doc.title === 'string' &&
         typeof doc.version === 'string' &&
+        (doc.status === 'Concept' || doc.status === 'Review' || doc.status === 'Goedgekeurd') &&
         Array.isArray(doc.nodes) &&
-        Array.isArray(doc.edges)
+        Array.isArray(doc.edges) &&
+        (typeof doc.selectedNodeId === 'string' || doc.selectedNodeId === null) &&
+        (typeof doc.selectedEdgeId === 'string' || doc.selectedEdgeId === null) &&
+        typeof viewport === 'object' &&
+        viewport !== null &&
+        typeof viewport.x === 'number' &&
+        typeof viewport.y === 'number' &&
+        typeof viewport.scale === 'number'
     );
 }
 

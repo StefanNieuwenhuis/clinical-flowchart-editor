@@ -331,8 +331,15 @@ let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
 useFlowchartStore.subscribe((state, prevState) => {
     if (state.document === prevState.document) return;
+
     if (autoSaveTimer !== null) clearTimeout(autoSaveTimer);
+
     autoSaveTimer = setTimeout(() => {
-        saveToStorage(state.document);
+        autoSaveTimer = null;
+        saveToStorage(useFlowchartStore.getState().document);
+
+        if (useFlowchartStore.getState().isDirty) {
+            useFlowchartStore.setState({ isDirty: false, lastSaveWasManual: false });
+        }
     }, AUTO_SAVE_DELAY_MS);
 });
