@@ -4,6 +4,11 @@ name: Vibe-Coding Workflow
 
 # Vibe-Coding Workflow Rules
 
+## Response style
+- In planning and scoping turns, respond with bullet lists only — no code blocks.
+- Only generate code when explicitly asked with words like "implement", "write", or "generate".
+- Never show code examples while explaining a plan or asking clarifying questions.
+
 ## Before writing any code
 1. Read the relevant extension checklist in `02-architecture.md` for the change type.
 2. Identify which store actions need to change vs. which need to be added.
