@@ -1,0 +1,26 @@
+# Lockfiles
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Generated / build output
+dist/
+build/
+node_modules/
+public/
+
+# Logs and debug info
+logs/
+debug.log
+
+# Large data files
+*.csv
+*.parquet
+*.json.gz
+
+# Env files
+.env*
+
+# Editors
+.idea/
+.vscode/
